@@ -1,62 +1,32 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-
-// ─── Bootstrap 5 CDN injected once ───────────────────────────────────────────
-function useBootstrap() {
-  useEffect(() => {
-    if (!document.getElementById("bs5-css")) {
-      const link = document.createElement("link");
-      link.id = "bs5-css";
-      link.rel = "stylesheet";
-      link.href = "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css";
-      document.head.appendChild(link);
-    }
-    if (!document.getElementById("bs5-js")) {
-      const script = document.createElement("script");
-      script.id = "bs5-js";
-      script.src = "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js";
-      document.head.appendChild(script);
-    }
-  }, []);
-}
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 // ─── BACKEND API DATABASE ─────────────────────────────────────────────
-
 function useProducts() {
-
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
-
     axios
       .get("http://localhost:3001/products")
-      .then(res => {
-        setProducts(res.data);
-      })
-      .catch(err => {
-        console.error("API Error:", err);
-      });
-
+      .then(res => setProducts(res.data))
+      .catch(err => console.error("API Error:", err));
   }, []);
 
   return products;
 }
 
-// ──────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-
 const CATEGORIES = ["All", "Men", "Women", "Accessories", "Electronics"];
 
 export default function RedHotStore() {
-  useBootstrap();
   const products = useProducts();
 
   const [search,      setSearch]      = useState("");
   const [category,    setCategory]    = useState("All");
   const [sort,        setSort]        = useState("default");
-  const [wishlist,    setWishlist]    = useState([]);
   const [redirecting, setRedirecting] = useState(null);
   const [heroVisible, setHeroVisible] = useState(false);
+  const [showAbout,   setShowAbout]   = useState(false);
 
   useEffect(() => { setTimeout(() => setHeroVisible(true), 80); }, []);
 
@@ -74,9 +44,6 @@ export default function RedHotStore() {
       if (sort === "name")       return (a.name || "").localeCompare(b.name || "");
       return 0;
     });
-
-  const toggleWishlist = (id) =>
-    setWishlist(w => w.includes(id) ? w.filter(x => x !== id) : [...w, id]);
 
   const handleBuy = (product) => {
     setRedirecting(product.id);
@@ -108,14 +75,11 @@ export default function RedHotStore() {
         }
 
         * { box-sizing: border-box; }
-
         body { background: var(--cream) !important; }
 
-        /* ── scrollbar ── */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: var(--sand); border-radius: 2px; }
 
-        /* ── navbar override ── */
         .rh-navbar {
           background: rgba(247,245,242,0.96) !important;
           backdrop-filter: blur(14px);
@@ -131,14 +95,25 @@ export default function RedHotStore() {
           letter-spacing: 0.04em;
           text-decoration: none;
         }
-        .rh-wishcount {
+        .rh-about-btn {
           font-family: 'DM Sans', sans-serif;
           font-size: 11px;
           letter-spacing: 0.18em;
+          text-transform: uppercase;
+          background: transparent;
+          border: 1px solid var(--sand);
           color: var(--taupe);
+          padding: 7px 18px;
+          border-radius: 3px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .rh-about-btn:hover {
+          border-color: var(--umber);
+          color: var(--umber);
+          background: var(--warm);
         }
 
-        /* ── hero ── */
         .rh-hero {
           background: linear-gradient(160deg, var(--warm) 0%, var(--cream) 60%);
           border-bottom: 1px solid var(--sand);
@@ -174,7 +149,6 @@ export default function RedHotStore() {
         .hero-fade { opacity: 0; transform: translateY(24px); transition: opacity .9s ease, transform .9s ease; }
         .hero-fade.in { opacity: 1; transform: translateY(0); }
 
-        /* ── filter section ── */
         .rh-filters {
           background: var(--white);
           border-bottom: 1px solid var(--warm);
@@ -193,10 +167,7 @@ export default function RedHotStore() {
           padding: 0.55rem 1rem;
           box-shadow: none !important;
         }
-        .rh-search.form-control:focus {
-          border-color: var(--accent);
-          background: var(--white);
-        }
+        .rh-search.form-control:focus { border-color: var(--accent); background: var(--white); }
         .rh-select.form-select {
           font-family: 'DM Sans', sans-serif;
           font-size: 12px;
@@ -211,7 +182,6 @@ export default function RedHotStore() {
         }
         .rh-select.form-select:focus { border-color: var(--accent); }
 
-        /* ── category pills ── */
         .rh-pill {
           font-family: 'DM Sans', sans-serif;
           font-size: 10px;
@@ -227,13 +197,8 @@ export default function RedHotStore() {
           text-transform: uppercase;
         }
         .rh-pill:hover { border-color: var(--umber); color: var(--umber); background: var(--warm); }
-        .rh-pill.active {
-          background: var(--umber);
-          border-color: var(--umber);
-          color: var(--white);
-        }
+        .rh-pill.active { background: var(--umber); border-color: var(--umber); color: var(--white); }
 
-        /* ── product card ── */
         .rh-card {
           background: var(--white);
           border: 1px solid var(--warm);
@@ -241,10 +206,7 @@ export default function RedHotStore() {
           overflow: hidden;
           transition: transform 0.35s ease, box-shadow 0.35s ease;
         }
-        .rh-card:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 20px 40px rgba(92,79,61,0.12);
-        }
+        .rh-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(92,79,61,0.12); }
         .rh-card-img {
           width: 100%;
           height: 280px;
@@ -253,154 +215,84 @@ export default function RedHotStore() {
           background: var(--warm);
         }
         .rh-badge-hot {
-          position: absolute;
-          top: 12px; left: 12px;
-          background: var(--umber);
-          color: var(--white);
-          font-family: 'DM Sans', sans-serif;
-          font-size: 9px;
-          font-weight: 600;
-          letter-spacing: 0.2em;
-          padding: 3px 10px;
-          border-radius: 2px;
-          text-transform: uppercase;
+          position: absolute; top: 12px; left: 12px;
+          background: var(--umber); color: var(--white);
+          font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600;
+          letter-spacing: 0.2em; padding: 3px 10px; border-radius: 2px; text-transform: uppercase;
         }
         .rh-badge-new {
-          position: absolute;
-          top: 12px; left: 12px;
-          background: var(--sand);
-          color: var(--umber);
-          font-family: 'DM Sans', sans-serif;
-          font-size: 9px;
-          font-weight: 600;
-          letter-spacing: 0.2em;
-          padding: 3px 10px;
-          border-radius: 2px;
-          text-transform: uppercase;
+          position: absolute; top: 12px; left: 12px;
+          background: var(--sand); color: var(--umber);
+          font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600;
+          letter-spacing: 0.2em; padding: 3px 10px; border-radius: 2px; text-transform: uppercase;
         }
-        .rh-wish-btn {
-          position: absolute;
-          top: 10px; right: 10px;
-          width: 34px; height: 34px;
-          background: rgba(247,245,242,0.85);
-          backdrop-filter: blur(4px);
-          border: 1px solid var(--sand);
-          border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 16px;
-          cursor: pointer;
-          transition: all 0.2s;
-          color: var(--taupe);
-        }
-        .rh-wish-btn:hover { background: var(--white); border-color: var(--umber); }
-        .rh-wish-btn.active { color: var(--umber); }
-
-        .rh-card-body {
-          padding: 18px 16px 16px;
-        }
+        .rh-card-body { padding: 18px 16px 16px; }
         .rh-cat-label {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 9px;
-          letter-spacing: 0.22em;
-          color: var(--taupe);
-          text-transform: uppercase;
-          margin-bottom: 5px;
+          font-family: 'DM Sans', sans-serif; font-size: 9px;
+          letter-spacing: 0.22em; color: var(--taupe); text-transform: uppercase; margin-bottom: 5px;
         }
         .rh-prod-name {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 1.1rem;
-          font-weight: 600;
-          color: var(--charcoal);
-          line-height: 1.3;
-          margin-bottom: 14px;
+          font-family: 'Cormorant Garamond', serif; font-size: 1.1rem;
+          font-weight: 600; color: var(--charcoal); line-height: 1.3; margin-bottom: 14px;
         }
-        .rh-price {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 1.05rem;
-          font-weight: 600;
-          color: var(--umber);
-        }
+        .rh-price { font-family: 'DM Sans', sans-serif; font-size: 1.05rem; font-weight: 600; color: var(--umber); }
         .rh-buy-btn {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 10px;
-          font-weight: 600;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          background: var(--charcoal);
-          color: var(--white);
-          border: none;
-          padding: 8px 18px;
-          border-radius: 3px;
-          cursor: pointer;
-          transition: all 0.2s;
+          font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 600;
+          letter-spacing: 0.2em; text-transform: uppercase;
+          background: var(--charcoal); color: var(--white);
+          border: none; padding: 8px 18px; border-radius: 3px; cursor: pointer; transition: all 0.2s;
         }
-        .rh-buy-btn:hover {
-          background: var(--umber);
-          transform: translateY(-1px);
-          box-shadow: 0 6px 16px rgba(92,79,61,0.25);
-        }
+        .rh-buy-btn:hover { background: var(--umber); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(92,79,61,0.25); }
 
-        /* ── count line ── */
         .rh-count {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 10px;
-          letter-spacing: 0.2em;
-          color: var(--sand);
-          text-transform: uppercase;
-          padding: 1.2rem 2rem 0;
-          max-width: 1400px;
-          margin: 0 auto;
+          font-family: 'DM Sans', sans-serif; font-size: 10px;
+          letter-spacing: 0.2em; color: var(--sand); text-transform: uppercase;
+          padding: 1.2rem 2rem 0; max-width: 1400px; margin: 0 auto;
         }
 
-        /* ── empty state ── */
-        .rh-empty {
-          text-align: center;
-          padding: 100px 0;
-          color: var(--sand);
-        }
+        .rh-empty { text-align: center; padding: 100px 0; color: var(--sand); }
         .rh-empty-icon { font-size: 3rem; margin-bottom: 1rem; }
-        .rh-empty-text {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 11px;
-          letter-spacing: 0.22em;
-          text-transform: uppercase;
-        }
+        .rh-empty-text { font-family: 'DM Sans', sans-serif; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; }
 
-        /* ── redirect overlay ── */
         .rh-overlay {
           position: fixed; inset: 0;
-          background: rgba(247,245,242,0.92);
-          backdrop-filter: blur(6px);
-          z-index: 9999;
-          display: flex; flex-direction: column;
-          align-items: center; justify-content: center;
-          gap: 18px;
+          background: rgba(247,245,242,0.92); backdrop-filter: blur(6px);
+          z-index: 9999; display: flex; flex-direction: column;
+          align-items: center; justify-content: center; gap: 18px;
         }
         .rh-spinner {
           width: 32px; height: 32px;
-          border: 2px solid var(--sand);
-          border-top-color: var(--umber);
-          border-radius: 50%;
-          animation: rh-spin 0.8s linear infinite;
+          border: 2px solid var(--sand); border-top-color: var(--umber);
+          border-radius: 50%; animation: rh-spin 0.8s linear infinite;
         }
         .rh-redirect-text {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 11px;
-          letter-spacing: 0.22em;
-          color: var(--taupe);
-          text-transform: uppercase;
+          font-family: 'DM Sans', sans-serif; font-size: 11px;
+          letter-spacing: 0.22em; color: var(--taupe); text-transform: uppercase;
         }
         @keyframes rh-spin { to { transform: rotate(360deg); } }
 
-        /* ── footer ── */
+        /* ── about modal ── */
+        .rh-about-overlay {
+          position: fixed; inset: 0;
+          background: rgba(44,44,44,0.5); backdrop-filter: blur(4px);
+          z-index: 9999; display: flex; align-items: center; justify-content: center;
+        }
+        .rh-about-modal {
+          background: var(--white); border-radius: 8px;
+          padding: 48px 44px; width: 480px; max-width: 95vw;
+          position: relative; border-top: 3px solid var(--umber);
+        }
+        .rh-about-close {
+          position: absolute; top: 16px; right: 18px;
+          background: none; border: none; font-size: 20px;
+          color: var(--taupe); cursor: pointer; line-height: 1;
+        }
+        .rh-about-close:hover { color: var(--umber); }
+
         .rh-footer {
-          background: var(--charcoal);
-          color: var(--taupe);
-          text-align: center;
-          padding: 2rem;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 11px;
-          letter-spacing: 0.16em;
+          background: var(--charcoal); color: var(--taupe);
+          text-align: center; padding: 2rem;
+          font-family: 'DM Sans', sans-serif; font-size: 11px; letter-spacing: 0.16em;
         }
       `}</style>
 
@@ -412,12 +304,32 @@ export default function RedHotStore() {
         </div>
       )}
 
+      {/* ABOUT MODAL */}
+      {showAbout && (
+        <div className="rh-about-overlay" onClick={() => setShowAbout(false)}>
+          <div className="rh-about-modal" onClick={e => e.stopPropagation()}>
+            <button className="rh-about-close" onClick={() => setShowAbout(false)}>✕</button>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", fontWeight: 700, color: "#5c4f3d", marginBottom: 8 }}>
+              About Redhot
+            </div>
+            <div style={{ width: 40, height: 2, background: "#d4c9b8", marginBottom: 20 }} />
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "#9e8f7e", lineHeight: 1.8, marginBottom: 16 }}>
+              Redhot is a curated affiliate store bringing you the finest picks across fashion, accessories, and electronics.
+            </p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "#9e8f7e", lineHeight: 1.8, marginBottom: 16 }}>
+              Every product is hand-selected for style. When you click Buy, you're redirected to our application where you can complete your purchase.
+            </p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#d4c9b8", lineHeight: 1.8 }}>
+              © 2025 Redhot — Curated with care.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* NAV */}
       <nav className="rh-navbar navbar sticky-top d-flex align-items-center justify-content-between">
         <a className="rh-brand">redhot</a>
-        {wishlist.length > 0 && (
-          <span className="rh-wishcount">♥ {wishlist.length} SAVED</span>
-        )}
+        <button className="rh-about-btn" onClick={() => setShowAbout(true)}>About</button>
       </nav>
 
       {/* HERO */}
@@ -482,10 +394,10 @@ export default function RedHotStore() {
             <div className="rh-empty-text">No products found</div>
           </div>
         ) : (
- <div className="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3">            {filtered.map(product => (
+          <div className="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3">
+            {filtered.map(product => (
               <div className="col" key={product.id}>
                 <div className="rh-card h-100">
-                  {/* IMAGE */}
                   <div style={{ position: "relative" }}>
                     <img
                       src={product.image || "https://via.placeholder.com/300x300?text=No+Image"}
@@ -498,15 +410,7 @@ export default function RedHotStore() {
                         {product.badge}
                       </span>
                     )}
-                    <button
-                      className={`rh-wish-btn ${wishlist.includes(product.id) ? "active" : ""}`}
-                      onClick={() => toggleWishlist(product.id)}
-                    >
-                      {wishlist.includes(product.id) ? "♥" : "♡"}
-                    </button>
                   </div>
-
-                  {/* BODY */}
                   <div className="rh-card-body">
                     <div className="rh-cat-label">{(product.category || "").toUpperCase()}</div>
                     <h3 className="rh-prod-name">{product.name}</h3>
