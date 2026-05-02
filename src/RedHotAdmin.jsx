@@ -1,53 +1,21 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 
-// ─── SHARED localStorage DB ──────────────────────────────────────────────────
-const DB_KEY = "redhot_products";
-const DB_EVENT = "redhot_update";
-
-const SAMPLE_PRODUCTS = [
-  { id: 1, name: "Flame Oversized Hoodie",  price: 4999,  category: "Men",         image: "https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=400&q=80",  affiliate_link: "#", badge: "HOT" },
-  { id: 2, name: "Crimson Slip Dress",       price: 3499,  category: "Women",       image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400&q=80",  affiliate_link: "#", badge: "NEW" },
-  { id: 3, name: "Ember Leather Watch",      price: 12999, category: "Accessories", image: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=400&q=80",  affiliate_link: "#", badge: "" },
-  { id: 4, name: "Blaze Wireless Earbuds",   price: 7999,  category: "Electronics", image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&q=80",  affiliate_link: "#", badge: "HOT" },
-  { id: 5, name: "Inferno Cargo Pants",      price: 5499,  category: "Men",         image: "https://images.unsplash.com/photo-1602293589930-45aad59ba3ab?w=400&q=80",  affiliate_link: "#", badge: "" },
-  { id: 6, name: "Scarlet Chain Necklace",   price: 2199,  category: "Accessories", image: "https://images.unsplash.com/photo-1611085583191-a3b181a88401?w=400&q=80",  affiliate_link: "#", badge: "NEW" },
-  { id: 7, name: "Heat Sensor Smart Watch",  price: 18999, category: "Electronics", image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80",  affiliate_link: "#", badge: "" },
-  { id: 8, name: "Lava Crop Jacket",         price: 6799,  category: "Women",       image: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&q=80",  affiliate_link: "#", badge: "HOT" },
-];
-
-function readDB() {
-  try {
-    const raw = localStorage.getItem(DB_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  localStorage.setItem(DB_KEY, JSON.stringify(SAMPLE_PRODUCTS));
-  return SAMPLE_PRODUCTS;
-}
-
-function writeDB(products) {
-  localStorage.setItem(DB_KEY, JSON.stringify(products));
-  window.dispatchEvent(new Event(DB_EVENT));
-}
+const API = "http://localhost:3001";
 
 function useProducts() {
-  const [products, setProducts] = useState(readDB);
-  useEffect(() => {
-    const onSameTab  = () => setProducts(readDB());
-    const onOtherTab = (e) => { if (e.key === DB_KEY) setProducts(readDB()); };
-    window.addEventListener(DB_EVENT, onSameTab);
-    window.addEventListener("storage", onOtherTab);
-    return () => {
-      window.removeEventListener(DB_EVENT, onSameTab);
-      window.removeEventListener("storage", onOtherTab);
-    };
-  }, []);
-  return products;
-}
+  const [products, setProducts] = useState([]);
 
-function addProduct(product)         { writeDB([...readDB(), { ...product, id: Date.now() }]); }
-function updateProduct(id, updates)  { writeDB(readDB().map(p => p.id === id ? { ...p, ...updates } : p)); }
-function deleteProduct(id)           { writeDB(readDB().filter(p => p.id !== id)); }
-// ─────────────────────────────────────────────────────────────────────────────
+  const fetchProducts = () => {
+    axios.get(`${API}/products`)
+      .then(res => setProducts(res.data))
+      .catch(err => console.error("API Error:", err));
+  };
+
+  useEffect(() => { fetchProducts(); }, []);
+
+  return { products, refresh: fetchProducts };
+}
 
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "redhot2026";
@@ -59,7 +27,7 @@ export default function RedHotAdmin() {
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [loginError, setLoginError] = useState("");
 
-  const products = useProducts();
+  const { products, refresh } = useProducts();
   const [search, setSearch] = useState("");
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState("");
@@ -92,26 +60,47 @@ export default function RedHotAdmin() {
     }
   };
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (!form.name || !form.price || !form.category || !form.image) {
       setFormError("Name, price, category and image are required."); return;
     }
-    addProduct({ name: form.name.trim(), price: parseInt(form.price), category: form.category, badge: form.badge, image: form.image.trim(), affiliate_link: form.affiliate_link.trim() || "#" });
-    setForm(emptyForm); setFormError("");
+    await axios.post(`${API}/products`, {
+      name: form.name.trim(),
+      price: parseInt(form.price),
+      category: form.category,
+      badge: form.badge,
+      image: form.image.trim(),
+      affiliate_link: form.affiliate_link.trim() || "#"
+    });
+    refresh();
+    setForm(emptyForm);
+    setFormError("");
     showToast("✓ Product added — visible on store now!");
   };
 
-  const openEdit = (product) => { setEditId(product.id); setEditForm({ ...product, price: String(product.price) }); };
+  const openEdit = (product) => {
+    setEditId(product.id);
+    setEditForm({ ...product, price: String(product.price) });
+  };
 
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
-    updateProduct(editId, { ...editForm, price: parseInt(editForm.price) });
+    await axios.put(`${API}/products/${editId}`, {
+      ...editForm,
+      price: parseInt(editForm.price)
+    });
+    refresh();
     setEditId(null);
     showToast("✓ Product updated");
   };
 
-  const confirmDelete = () => { deleteProduct(deleteId); setDeleteId(null); showToast("🗑 Product deleted"); };
+  const confirmDelete = async () => {
+    await axios.delete(`${API}/products/${deleteId}`);
+    refresh();
+    setDeleteId(null);
+    showToast("🗑 Product deleted");
+  };
 
   const css = `
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Jost:wght@300;400;500;600&display=swap');

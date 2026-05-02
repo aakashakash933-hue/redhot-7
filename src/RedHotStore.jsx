@@ -1,56 +1,60 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 
-// ─── SHARED localStorage DB ──────────────────────────────────────────────────
-const DB_KEY = "redhot_products";
-const DB_EVENT = "redhot_update";
-
-const SAMPLE_PRODUCTS = [
-  { id: 1, name: "Flame Oversized Hoodie",  price: 4999,  category: "Men",         image: "https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=400&q=80",  affiliate_link: "#", badge: "HOT" },
-  { id: 2, name: "Crimson Slip Dress",       price: 3499,  category: "Women",       image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400&q=80",  affiliate_link: "#", badge: "NEW" },
-  { id: 3, name: "Ember Leather Watch",      price: 12999, category: "Accessories", image: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=400&q=80",  affiliate_link: "#", badge: "" },
-  { id: 4, name: "Blaze Wireless Earbuds",   price: 7999,  category: "Electronics", image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&q=80",  affiliate_link: "#", badge: "HOT" },
-  { id: 5, name: "Inferno Cargo Pants",      price: 5499,  category: "Men",         image: "https://images.unsplash.com/photo-1602293589930-45aad59ba3ab?w=400&q=80",  affiliate_link: "#", badge: "" },
-  { id: 6, name: "Scarlet Chain Necklace",   price: 2199,  category: "Accessories", image: "https://images.unsplash.com/photo-1611085583191-a3b181a88401?w=400&q=80",  affiliate_link: "#", badge: "NEW" },
-  { id: 7, name: "Heat Sensor Smart Watch",  price: 18999, category: "Electronics", image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80",  affiliate_link: "#", badge: "" },
-  { id: 8, name: "Lava Crop Jacket",         price: 6799,  category: "Women",       image: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&q=80",  affiliate_link: "#", badge: "HOT" },
-];
-
-function readDB() {
-  try {
-    const raw = localStorage.getItem(DB_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  localStorage.setItem(DB_KEY, JSON.stringify(SAMPLE_PRODUCTS));
-  return SAMPLE_PRODUCTS;
+// ─── Bootstrap 5 CDN injected once ───────────────────────────────────────────
+function useBootstrap() {
+  useEffect(() => {
+    if (!document.getElementById("bs5-css")) {
+      const link = document.createElement("link");
+      link.id = "bs5-css";
+      link.rel = "stylesheet";
+      link.href = "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css";
+      document.head.appendChild(link);
+    }
+    if (!document.getElementById("bs5-js")) {
+      const script = document.createElement("script");
+      script.id = "bs5-js";
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js";
+      document.head.appendChild(script);
+    }
+  }, []);
 }
 
+// ─── BACKEND API DATABASE ─────────────────────────────────────────────
+
 function useProducts() {
-  const [products, setProducts] = useState(readDB);
+
+  const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    const onSameTab = () => setProducts(readDB());
-    const onOtherTab = (e) => { if (e.key === DB_KEY) setProducts(readDB()); };
-    window.addEventListener(DB_EVENT, onSameTab);
-    window.addEventListener("storage", onOtherTab);
-    return () => {
-      window.removeEventListener(DB_EVENT, onSameTab);
-      window.removeEventListener("storage", onOtherTab);
-    };
+
+    axios
+      .get("http://localhost:3001/products")
+      .then(res => {
+        setProducts(res.data);
+      })
+      .catch(err => {
+        console.error("API Error:", err);
+      });
+
   }, []);
 
   return products;
 }
+
+// ──────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CATEGORIES = ["All", "Men", "Women", "Accessories", "Electronics"];
 
 export default function RedHotStore() {
+  useBootstrap();
   const products = useProducts();
 
-  const [search, setSearch]       = useState("");
-  const [category, setCategory]   = useState("All");
-  const [sort, setSort]           = useState("default");
-  const [wishlist, setWishlist]   = useState([]);
+  const [search,      setSearch]      = useState("");
+  const [category,    setCategory]    = useState("All");
+  const [sort,        setSort]        = useState("default");
+  const [wishlist,    setWishlist]    = useState([]);
   const [redirecting, setRedirecting] = useState(null);
   const [heroVisible, setHeroVisible] = useState(false);
 
@@ -87,132 +91,431 @@ export default function RedHotStore() {
   };
 
   return (
-    <div style={{ fontFamily:"'Jost',sans-serif", minHeight:"100vh", background:"#0a0a0a", color:"#f5e6d3" }}>
+    <div style={{ fontFamily: "'Cormorant Garamond', 'Georgia', serif", background: "#f7f5f2", minHeight: "100vh", color: "#2c2c2c" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Jost:wght@300;400;500;600&display=swap');
-        *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-        ::-webkit-scrollbar { width:4px; }
-        ::-webkit-scrollbar-thumb { background:#c0392b; }
-        .rhs-card { background:#111; border:1px solid #1a1a1a; border-radius:8px; overflow:hidden; transition:transform .35s, box-shadow .35s; }
-        .rhs-card:hover { transform:translateY(-8px); box-shadow:0 24px 48px rgba(192,57,43,.22); }
-        .rhs-pill { border:1px solid #333; color:#888; padding:8px 18px; border-radius:3px; font-family:'Jost',sans-serif; font-size:11px; letter-spacing:.15em; cursor:pointer; background:transparent; transition:all .2s; }
-        .rhs-pill:hover { border-color:#555; color:#f5e6d3; }
-        .rhs-pill.active { background:linear-gradient(135deg,#c0392b,#e74c3c); border-color:transparent; color:#fff; }
-        .rhs-inp { width:100%; background:#111; border:1px solid #222; color:#f5e6d3; padding:10px 14px; border-radius:4px; font-size:13px; font-family:'Jost',sans-serif; outline:none; transition:border-color .2s; }
-        .rhs-inp:focus { border-color:#c0392b; }
-        .rhs-buy { background:linear-gradient(135deg,#c0392b,#e74c3c); border:none; color:#fff; padding:8px 20px; border-radius:3px; font-family:'Jost',sans-serif; font-size:11px; letter-spacing:.15em; font-weight:600; cursor:pointer; transition:all .2s; }
-        .rhs-buy:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(192,57,43,.35); }
-        .hero-fade { opacity:0; transform:translateY(28px); transition:opacity .9s, transform .9s; }
-        .hero-fade.in { opacity:1; transform:translateY(0); }
-        @keyframes spin { to { transform:rotate(360deg); } }
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+        :root {
+          --cream:   #f7f5f2;
+          --warm:    #ede8e0;
+          --sand:    #d4c9b8;
+          --taupe:   #9e8f7e;
+          --umber:   #5c4f3d;
+          --charcoal:#2c2c2c;
+          --white:   #ffffff;
+          --accent:  #7c6a55;
+          --accent2: #a08060;
+        }
+
+        * { box-sizing: border-box; }
+
+        body { background: var(--cream) !important; }
+
+        /* ── scrollbar ── */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--sand); border-radius: 2px; }
+
+        /* ── navbar override ── */
+        .rh-navbar {
+          background: rgba(247,245,242,0.96) !important;
+          backdrop-filter: blur(14px);
+          border-bottom: 1px solid var(--warm);
+          padding: 0 2rem;
+          height: 64px;
+        }
+        .rh-brand {
+          font-family: 'Cormorant Garamond', serif;
+          font-weight: 700;
+          font-size: 1.6rem;
+          color: var(--umber) !important;
+          letter-spacing: 0.04em;
+          text-decoration: none;
+        }
+        .rh-wishcount {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 11px;
+          letter-spacing: 0.18em;
+          color: var(--taupe);
+        }
+
+        /* ── hero ── */
+        .rh-hero {
+          background: linear-gradient(160deg, var(--warm) 0%, var(--cream) 60%);
+          border-bottom: 1px solid var(--sand);
+          padding: 80px 2rem 60px;
+          text-align: center;
+        }
+        .rh-hero-eyebrow {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 10px;
+          letter-spacing: 0.38em;
+          color: var(--taupe);
+          font-weight: 500;
+          margin-bottom: 1.1rem;
+          text-transform: uppercase;
+        }
+        .rh-hero-title {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: clamp(2.6rem, 6vw, 5rem);
+          font-weight: 700;
+          line-height: 1.08;
+          color: var(--charcoal);
+          margin-bottom: 1rem;
+        }
+        .rh-hero-title span { color: var(--accent); font-style: italic; }
+        .rh-hero-sub {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          color: var(--taupe);
+          letter-spacing: 0.1em;
+          max-width: 380px;
+          margin: 0 auto;
+        }
+        .hero-fade { opacity: 0; transform: translateY(24px); transition: opacity .9s ease, transform .9s ease; }
+        .hero-fade.in { opacity: 1; transform: translateY(0); }
+
+        /* ── filter section ── */
+        .rh-filters {
+          background: var(--white);
+          border-bottom: 1px solid var(--warm);
+          padding: 1.5rem 2rem;
+          position: sticky;
+          top: 64px;
+          z-index: 40;
+        }
+        .rh-search.form-control {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          background: var(--cream);
+          border: 1px solid var(--sand);
+          border-radius: 4px;
+          color: var(--charcoal);
+          padding: 0.55rem 1rem;
+          box-shadow: none !important;
+        }
+        .rh-search.form-control:focus {
+          border-color: var(--accent);
+          background: var(--white);
+        }
+        .rh-select.form-select {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 12px;
+          letter-spacing: 0.06em;
+          background: var(--cream);
+          border: 1px solid var(--sand);
+          border-radius: 4px;
+          color: var(--charcoal);
+          padding: 0.55rem 2rem 0.55rem 1rem;
+          box-shadow: none !important;
+          cursor: pointer;
+        }
+        .rh-select.form-select:focus { border-color: var(--accent); }
+
+        /* ── category pills ── */
+        .rh-pill {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 10px;
+          letter-spacing: 0.2em;
+          font-weight: 500;
+          padding: 6px 18px;
+          border-radius: 2px;
+          border: 1px solid var(--sand);
+          background: transparent;
+          color: var(--taupe);
+          cursor: pointer;
+          transition: all 0.2s;
+          text-transform: uppercase;
+        }
+        .rh-pill:hover { border-color: var(--umber); color: var(--umber); background: var(--warm); }
+        .rh-pill.active {
+          background: var(--umber);
+          border-color: var(--umber);
+          color: var(--white);
+        }
+
+        /* ── product card ── */
+        .rh-card {
+          background: var(--white);
+          border: 1px solid var(--warm);
+          border-radius: 6px;
+          overflow: hidden;
+          transition: transform 0.35s ease, box-shadow 0.35s ease;
+        }
+        .rh-card:hover {
+          transform: translateY(-6px);
+          box-shadow: 0 20px 40px rgba(92,79,61,0.12);
+        }
+        .rh-card-img {
+          width: 100%;
+          height: 280px;
+          object-fit: cover;
+          display: block;
+          background: var(--warm);
+        }
+        .rh-badge-hot {
+          position: absolute;
+          top: 12px; left: 12px;
+          background: var(--umber);
+          color: var(--white);
+          font-family: 'DM Sans', sans-serif;
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.2em;
+          padding: 3px 10px;
+          border-radius: 2px;
+          text-transform: uppercase;
+        }
+        .rh-badge-new {
+          position: absolute;
+          top: 12px; left: 12px;
+          background: var(--sand);
+          color: var(--umber);
+          font-family: 'DM Sans', sans-serif;
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.2em;
+          padding: 3px 10px;
+          border-radius: 2px;
+          text-transform: uppercase;
+        }
+        .rh-wish-btn {
+          position: absolute;
+          top: 10px; right: 10px;
+          width: 34px; height: 34px;
+          background: rgba(247,245,242,0.85);
+          backdrop-filter: blur(4px);
+          border: 1px solid var(--sand);
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 16px;
+          cursor: pointer;
+          transition: all 0.2s;
+          color: var(--taupe);
+        }
+        .rh-wish-btn:hover { background: var(--white); border-color: var(--umber); }
+        .rh-wish-btn.active { color: var(--umber); }
+
+        .rh-card-body {
+          padding: 18px 16px 16px;
+        }
+        .rh-cat-label {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 9px;
+          letter-spacing: 0.22em;
+          color: var(--taupe);
+          text-transform: uppercase;
+          margin-bottom: 5px;
+        }
+        .rh-prod-name {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: var(--charcoal);
+          line-height: 1.3;
+          margin-bottom: 14px;
+        }
+        .rh-price {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 1.05rem;
+          font-weight: 600;
+          color: var(--umber);
+        }
+        .rh-buy-btn {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          background: var(--charcoal);
+          color: var(--white);
+          border: none;
+          padding: 8px 18px;
+          border-radius: 3px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .rh-buy-btn:hover {
+          background: var(--umber);
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(92,79,61,0.25);
+        }
+
+        /* ── count line ── */
+        .rh-count {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 10px;
+          letter-spacing: 0.2em;
+          color: var(--sand);
+          text-transform: uppercase;
+          padding: 1.2rem 2rem 0;
+          max-width: 1400px;
+          margin: 0 auto;
+        }
+
+        /* ── empty state ── */
+        .rh-empty {
+          text-align: center;
+          padding: 100px 0;
+          color: var(--sand);
+        }
+        .rh-empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .rh-empty-text {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 11px;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+        }
+
+        /* ── redirect overlay ── */
+        .rh-overlay {
+          position: fixed; inset: 0;
+          background: rgba(247,245,242,0.92);
+          backdrop-filter: blur(6px);
+          z-index: 9999;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          gap: 18px;
+        }
+        .rh-spinner {
+          width: 32px; height: 32px;
+          border: 2px solid var(--sand);
+          border-top-color: var(--umber);
+          border-radius: 50%;
+          animation: rh-spin 0.8s linear infinite;
+        }
+        .rh-redirect-text {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 11px;
+          letter-spacing: 0.22em;
+          color: var(--taupe);
+          text-transform: uppercase;
+        }
+        @keyframes rh-spin { to { transform: rotate(360deg); } }
+
+        /* ── footer ── */
+        .rh-footer {
+          background: var(--charcoal);
+          color: var(--taupe);
+          text-align: center;
+          padding: 2rem;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 11px;
+          letter-spacing: 0.16em;
+        }
       `}</style>
 
+      {/* REDIRECT OVERLAY */}
       {redirecting && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.85)", zIndex:999, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:18 }}>
-          <div style={{ width:36, height:36, border:"3px solid #333", borderTopColor:"#c0392b", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
-          <div style={{ fontSize:13, letterSpacing:"0.2em", color:"#888" }}>REDIRECTING…</div>
+        <div className="rh-overlay">
+          <div className="rh-spinner" />
+          <div className="rh-redirect-text">Redirecting…</div>
         </div>
       )}
 
       {/* NAV */}
-      <nav style={{ position:"sticky", top:0, zIndex:50, background:"rgba(10,10,10,.96)", backdropFilter:"blur(12px)", borderBottom:"1px solid #1a1a1a", height:60, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 32px" }}>
-        <div style={{ fontFamily:"'Playfair Display'", fontSize:22, fontWeight:900, color:"#c0392b" }}>
-          redhot <span style={{ fontSize:18 }}>🔥</span>
-        </div>
+      <nav className="rh-navbar navbar sticky-top d-flex align-items-center justify-content-between">
+        <a className="rh-brand">redhot</a>
         {wishlist.length > 0 && (
-          <span style={{ fontSize:11, letterSpacing:"0.15em", color:"#555" }}>
-            ♥ {wishlist.length} SAVED
-          </span>
+          <span className="rh-wishcount">♥ {wishlist.length} SAVED</span>
         )}
       </nav>
 
       {/* HERO */}
-      <div style={{ textAlign:"center", padding:"72px 32px 48px", borderBottom:"1px solid #111" }}>
+      <div className="rh-hero">
         <div className={`hero-fade ${heroVisible ? "in" : ""}`}>
-          <div style={{ fontSize:11, letterSpacing:"0.35em", color:"#c0392b", marginBottom:16, fontWeight:600 }}>NEW ARRIVALS</div>
-          <h1 style={{ fontFamily:"'Playfair Display'", fontSize:"clamp(36px,6vw,72px)", fontWeight:900, lineHeight:1.1, marginBottom:16 }}>
+          <div className="rh-hero-eyebrow">New Arrivals</div>
+          <h1 className="rh-hero-title">
             Discover What's<br />
-            <span style={{ color:"#c0392b" }}>Burning Hot</span>
+            <span>Curated & Coveted</span>
           </h1>
-          <p style={{ fontSize:14, color:"#555", letterSpacing:"0.1em", maxWidth:400, margin:"0 auto" }}>
-            Curated drops. Every piece on fire.
-          </p>
+          <p className="rh-hero-sub">Refined drops. Every piece worth wearing.</p>
         </div>
       </div>
 
       {/* FILTERS */}
-      <div style={{ maxWidth:1400, margin:"0 auto", padding:"32px 32px 0" }}>
-        <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginBottom:20 }}>
-          <input
-            className="rhs-inp"
-            placeholder="🔍  Search products…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ flex:1, minWidth:200 }}
-          />
-          <select value={sort} onChange={e => setSort(e.target.value)} className="rhs-inp" style={{ width:"auto", cursor:"pointer" }}>
-            <option value="default">Sort: Default</option>
-            <option value="price_asc">Price: Low → High</option>
-            <option value="price_desc">Price: High → Low</option>
-            <option value="name">Name A–Z</option>
-          </select>
-        </div>
-
-        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:28 }}>
-          {CATEGORIES.map(cat => (
-            <button key={cat} className={`rhs-pill ${category === cat ? "active" : ""}`} onClick={() => setCategory(cat)}>
-              {cat.toUpperCase()}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ fontSize:11, letterSpacing:"0.18em", color:"#333", marginBottom:28 }}>
-          SHOWING {filtered.length} OF {products.length} PRODUCTS
+      <div className="rh-filters">
+        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+          <div className="d-flex gap-2 flex-wrap mb-3">
+            <input
+              className="rh-search form-control flex-grow-1"
+              style={{ minWidth: 200 }}
+              placeholder="Search products…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <select
+              className="rh-select form-select"
+              style={{ width: "auto" }}
+              value={sort}
+              onChange={e => setSort(e.target.value)}
+            >
+              <option value="default">Sort: Default</option>
+              <option value="price_asc">Price: Low → High</option>
+              <option value="price_desc">Price: High → Low</option>
+              <option value="name">Name A–Z</option>
+            </select>
+          </div>
+          <div className="d-flex gap-2 flex-wrap">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                className={`rh-pill ${category === cat ? "active" : ""}`}
+                onClick={() => setCategory(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
+      {/* COUNT */}
+      <div className="rh-count">
+        Showing {filtered.length} of {products.length} products
+      </div>
+
       {/* GRID */}
-      <div style={{ maxWidth:1400, margin:"0 auto", padding:"0 32px 80px" }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "1.5rem 2rem 5rem" }}>
         {filtered.length === 0 ? (
-          <div style={{ textAlign:"center", padding:"100px 0", color:"#333" }}>
-            <div style={{ fontSize:48, marginBottom:16 }}>🔥</div>
-            <div style={{ fontSize:12, letterSpacing:"0.2em" }}>NO PRODUCTS FOUND</div>
+          <div className="rh-empty">
+            <div className="rh-empty-icon">◇</div>
+            <div className="rh-empty-text">No products found</div>
           </div>
         ) : (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))", gap:24 }}>
-            {filtered.map(product => (
-              <div key={product.id} className="rhs-card">
-                <div style={{ position:"relative" }}>
-                  <img
-                    src={product.image || "https://via.placeholder.com/300x300?text=No+Image"}
-                    alt={product.name}
-                    style={{ width:"100%", height:280, objectFit:"cover", display:"block" }}
-                    onError={e => { e.target.src = "https://via.placeholder.com/300x300?text=No+Image"; }}
-                  />
-                  {product.badge && (
-                    <span style={{ position:"absolute", top:12, left:12, background: product.badge === "HOT" ? "#c0392b" : "#1a2a3a", color:"#fff", fontSize:9, letterSpacing:"0.2em", fontWeight:700, padding:"3px 10px", borderRadius:2, fontFamily:"'Jost',sans-serif" }}>
-                      {product.badge}{product.badge === "HOT" ? " 🔥" : ""}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => toggleWishlist(product.id)}
-                    style={{ position:"absolute", top:10, right:10, background:"rgba(0,0,0,.55)", backdropFilter:"blur(4px)", border:"none", borderRadius:"50%", width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, cursor:"pointer", color: wishlist.includes(product.id) ? "#c0392b" : "#888", transition:"color .2s" }}
-                  >
-                    {wishlist.includes(product.id) ? "♥" : "♡"}
-                  </button>
-                </div>
-                <div style={{ padding:"18px 16px" }}>
-                  <div style={{ fontSize:9, letterSpacing:"0.22em", color:"#444", marginBottom:5 }}>
-                    {(product.category || "").toUpperCase()}
+ <div className="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3">            {filtered.map(product => (
+              <div className="col" key={product.id}>
+                <div className="rh-card h-100">
+                  {/* IMAGE */}
+                  <div style={{ position: "relative" }}>
+                    <img
+                      src={product.image || "https://via.placeholder.com/300x300?text=No+Image"}
+                      alt={product.name}
+                      className="rh-card-img"
+                      onError={e => { e.target.src = "https://via.placeholder.com/300x300?text=No+Image"; }}
+                    />
+                    {product.badge && (
+                      <span className={product.badge === "HOT" ? "rh-badge-hot" : "rh-badge-new"}>
+                        {product.badge}
+                      </span>
+                    )}
+                    <button
+                      className={`rh-wish-btn ${wishlist.includes(product.id) ? "active" : ""}`}
+                      onClick={() => toggleWishlist(product.id)}
+                    >
+                      {wishlist.includes(product.id) ? "♥" : "♡"}
+                    </button>
                   </div>
-                  <h3 style={{ fontFamily:"'Playfair Display'", fontSize:16, fontWeight:700, marginBottom:14, lineHeight:1.3 }}>
-                    {product.name}
-                  </h3>
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                    <span style={{ fontSize:17, fontWeight:600, color:"#c0392b" }}>
-                      ₹{(product.price || 0).toLocaleString()}
-                    </span>
-                    <button className="rhs-buy" onClick={() => handleBuy(product)}>BUY →</button>
+
+                  {/* BODY */}
+                  <div className="rh-card-body">
+                    <div className="rh-cat-label">{(product.category || "").toUpperCase()}</div>
+                    <h3 className="rh-prod-name">{product.name}</h3>
+                    <div className="d-flex align-items-center justify-content-between">
+                      <span className="rh-price">₹{(product.price || 0).toLocaleString()}</span>
+                      <button className="rh-buy-btn" onClick={() => handleBuy(product)}>
+                        Buy →
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -220,6 +523,9 @@ export default function RedHotStore() {
           </div>
         )}
       </div>
+
+      {/* FOOTER */}
+      <div className="rh-footer">© 2025 REDHOT — All rights reserved</div>
     </div>
   );
 }
