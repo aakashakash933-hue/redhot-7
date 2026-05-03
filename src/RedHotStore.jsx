@@ -2,17 +2,14 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-// ─── BACKEND API DATABASE ─────────────────────────────────────────────
 function useProducts() {
   const [products, setProducts] = useState([]);
-
   useEffect(() => {
     axios
       .get("http://localhost:3001/products")
       .then(res => setProducts(res.data))
       .catch(err => console.error("API Error:", err));
   }, []);
-
   return products;
 }
 
@@ -81,17 +78,20 @@ export default function RedHotStore() {
         ::-webkit-scrollbar-thumb { background: var(--sand); border-radius: 2px; }
 
         .rh-navbar {
-          background: rgba(247,245,242,0.96) !important;
+          background: rgba(247,245,242,0.96);
           backdrop-filter: blur(14px);
           border-bottom: 1px solid var(--warm);
           padding: 0 2rem;
           height: 64px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
         }
         .rh-brand {
           font-family: 'Cormorant Garamond', serif;
           font-weight: 700;
           font-size: 1.6rem;
-          color: var(--umber) !important;
+          color: var(--umber);
           letter-spacing: 0.04em;
           text-decoration: none;
         }
@@ -153,9 +153,6 @@ export default function RedHotStore() {
           background: var(--white);
           border-bottom: 1px solid var(--warm);
           padding: 1.5rem 2rem;
-          position: sticky;
-          top: 64px;
-          z-index: 40;
         }
         .rh-search.form-control {
           font-family: 'DM Sans', sans-serif;
@@ -203,10 +200,23 @@ export default function RedHotStore() {
           background: var(--white);
           border: 1px solid var(--warm);
           border-radius: 6px;
-          overflow: hidden;
+          overflow: visible;
           transition: transform 0.35s ease, box-shadow 0.35s ease;
+          position: relative;
+          z-index: 1;
         }
-        .rh-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(92,79,61,0.12); }
+        .rh-card:hover {
+          transform: translateY(-6px);
+          box-shadow: 0 20px 40px rgba(92,79,61,0.12);
+          z-index: 2;
+        }
+
+        /* Image wrapper clips the image to rounded top corners */
+        .rh-card-img-wrap {
+          border-radius: 6px 6px 0 0;
+          overflow: hidden;
+          position: relative;
+        }
         .rh-card-img {
           width: 100%;
           height: 280px;
@@ -214,6 +224,7 @@ export default function RedHotStore() {
           display: block;
           background: var(--warm);
         }
+
         .rh-badge-hot {
           position: absolute; top: 12px; left: 12px;
           background: var(--umber); color: var(--white);
@@ -226,7 +237,11 @@ export default function RedHotStore() {
           font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600;
           letter-spacing: 0.2em; padding: 3px 10px; border-radius: 2px; text-transform: uppercase;
         }
-        .rh-card-body { padding: 18px 16px 16px; }
+        .rh-card-body {
+          padding: 18px 16px 16px;
+          border-radius: 0 0 6px 6px;
+          background: var(--white);
+        }
         .rh-cat-label {
           font-family: 'DM Sans', sans-serif; font-size: 9px;
           letter-spacing: 0.22em; color: var(--taupe); text-transform: uppercase; margin-bottom: 5px;
@@ -271,7 +286,6 @@ export default function RedHotStore() {
         }
         @keyframes rh-spin { to { transform: rotate(360deg); } }
 
-        /* ── about modal ── */
         .rh-about-overlay {
           position: fixed; inset: 0;
           background: rgba(44,44,44,0.5); backdrop-filter: blur(4px);
@@ -317,7 +331,7 @@ export default function RedHotStore() {
               Redhot is a curated affiliate store bringing you the finest picks across fashion, accessories, and electronics.
             </p>
             <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "#9e8f7e", lineHeight: 1.8, marginBottom: 16 }}>
-              Every product is hand-selected for style. When you click Buy, you're redirected to our application where you can complete your purchase.
+              Every product is hand-selected for style. When you click Link, you're redirected to the application where you can complete your purchase.
             </p>
             <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#d4c9b8", lineHeight: 1.8 }}>
               © 2025 Redhot — Curated with care.
@@ -327,10 +341,10 @@ export default function RedHotStore() {
       )}
 
       {/* NAV */}
-      <nav className="rh-navbar navbar sticky-top d-flex align-items-center justify-content-between">
+      <div className="rh-navbar">
         <a className="rh-brand">redhot</a>
         <button className="rh-about-btn" onClick={() => setShowAbout(true)}>About</button>
-      </nav>
+      </div>
 
       {/* HERO */}
       <div className="rh-hero">
@@ -398,7 +412,8 @@ export default function RedHotStore() {
             {filtered.map(product => (
               <div className="col" key={product.id}>
                 <div className="rh-card h-100">
-                  <div style={{ position: "relative" }}>
+                  {/* Image wrapper handles border-radius clipping independently */}
+                  <div className="rh-card-img-wrap">
                     <img
                       src={product.image || "https://via.placeholder.com/300x300?text=No+Image"}
                       alt={product.name}
@@ -417,7 +432,7 @@ export default function RedHotStore() {
                     <div className="d-flex align-items-center justify-content-between">
                       <span className="rh-price">₹{(product.price || 0).toLocaleString()}</span>
                       <button className="rh-buy-btn" onClick={() => handleBuy(product)}>
-                        Buy →
+                        Link
                       </button>
                     </div>
                   </div>
