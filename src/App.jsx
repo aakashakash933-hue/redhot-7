@@ -10,6 +10,13 @@ export default function App() {
   const isAdmin = pathname === "/admin";
 
   if (isAdmin) return <RedHotAdmin />;
-  if (!introComplete) return <RedhotIntro onComplete={() => setIntroComplete(true)} />;
-  return <RedHotStore />;
+
+  return (
+    <>
+      {!introComplete && (
+        <RedhotIntro onComplete={() => setIntroComplete(true)} />
+      )}
+      <RedHotStore />
+    </>
+  );
 }

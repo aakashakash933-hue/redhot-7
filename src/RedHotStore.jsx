@@ -71,6 +71,13 @@ export default function RedHotStore() {
           --red-dim:  rgba(200,30,30,0.12);
         }
 
+        html, body, #root {
+          width: 100%;
+          min-height: 100vh;
+          margin: 0;
+          padding: 0;
+        }
+
         * { box-sizing: border-box; }
         body { background: var(--cream) !important; }
 
@@ -86,6 +93,7 @@ export default function RedHotStore() {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          width: 100%;
         }
         .rh-brand {
           font-family: 'Cormorant Garamond', serif;
@@ -119,6 +127,7 @@ export default function RedHotStore() {
           border-bottom: 1px solid var(--sand);
           padding: 80px 2rem 60px;
           text-align: center;
+          width: 100%;
         }
         .rh-hero-eyebrow {
           font-family: 'DM Sans', sans-serif;
@@ -153,6 +162,7 @@ export default function RedHotStore() {
           background: var(--white);
           border-bottom: 1px solid var(--warm);
           padding: 1.5rem 2rem;
+          width: 100%;
         }
         .rh-search.form-control {
           font-family: 'DM Sans', sans-serif;
@@ -204,6 +214,7 @@ export default function RedHotStore() {
           transition: transform 0.35s ease, box-shadow 0.35s ease;
           position: relative;
           z-index: 1;
+          height: 100%;
         }
         .rh-card:hover {
           transform: translateY(-6px);
@@ -218,7 +229,7 @@ export default function RedHotStore() {
         }
         .rh-card-img {
           width: 100%;
-          height: 280px;
+          height: 260px;
           object-fit: cover;
           display: block;
           background: var(--warm);
@@ -268,10 +279,16 @@ export default function RedHotStore() {
         .rh-count {
           font-family: 'DM Sans', sans-serif; font-size: 10px;
           letter-spacing: 0.2em; color: var(--sand); text-transform: uppercase;
-          padding: 1.2rem 2rem 0; max-width: 1400px; margin: 0 auto;
+          padding: 1.2rem 2rem 0;
+          width: 100%;
         }
 
-        .rh-empty { text-align: center; padding: 100px 0; color: var(--sand); }
+        .rh-grid-wrap {
+          width: 100%;
+          padding: 1.5rem 2rem 5rem;
+        }
+
+        .rh-empty { text-align: center; padding: 100px 0; color: var(--sand); width: 100%; }
         .rh-empty-icon { font-size: 3rem; margin-bottom: 1rem; }
         .rh-empty-text { font-family: 'DM Sans', sans-serif; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; }
 
@@ -313,10 +330,10 @@ export default function RedHotStore() {
           background: var(--charcoal); color: var(--taupe);
           text-align: center; padding: 2rem;
           font-family: 'DM Sans', sans-serif; font-size: 11px; letter-spacing: 0.16em;
+          width: 100%;
         }
       `}</style>
 
-      {/* REDIRECT OVERLAY */}
       {redirecting && (
         <div className="rh-overlay">
           <div className="rh-spinner" />
@@ -324,7 +341,6 @@ export default function RedHotStore() {
         </div>
       )}
 
-      {/* ABOUT MODAL */}
       {showAbout && (
         <div className="rh-about-overlay" onClick={() => setShowAbout(false)}>
           <div className="rh-about-modal" onClick={e => e.stopPropagation()}>
@@ -346,13 +362,11 @@ export default function RedHotStore() {
         </div>
       )}
 
-      {/* NAV */}
       <div className="rh-navbar">
         <a className="rh-brand">redhot</a>
         <button className="rh-about-btn" onClick={() => setShowAbout(true)}>About</button>
       </div>
 
-      {/* HERO */}
       <div className="rh-hero">
         <div className={`hero-fade ${heroVisible ? "in" : ""}`}>
           <div className="rh-hero-eyebrow">New Arrivals</div>
@@ -364,60 +378,55 @@ export default function RedHotStore() {
         </div>
       </div>
 
-      {/* FILTERS */}
       <div className="rh-filters">
-        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-          <div className="d-flex gap-2 flex-wrap mb-3">
-            <input
-              className="rh-search form-control flex-grow-1"
-              style={{ minWidth: 200 }}
-              placeholder="Search products…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            <select
-              className="rh-select form-select"
-              style={{ width: "auto" }}
-              value={sort}
-              onChange={e => setSort(e.target.value)}
+        <div className="d-flex gap-2 flex-wrap mb-3">
+          <input
+            className="rh-search form-control flex-grow-1"
+            style={{ minWidth: 200 }}
+            placeholder="Search products…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <select
+            className="rh-select form-select"
+            style={{ width: "auto" }}
+            value={sort}
+            onChange={e => setSort(e.target.value)}
+          >
+            <option value="default">Sort: Default</option>
+            <option value="price_asc">Price: Low → High</option>
+            <option value="price_desc">Price: High → Low</option>
+            <option value="name">Name A–Z</option>
+          </select>
+        </div>
+        <div className="d-flex gap-2 flex-wrap">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              className={`rh-pill ${category === cat ? "active" : ""}`}
+              onClick={() => setCategory(cat)}
             >
-              <option value="default">Sort: Default</option>
-              <option value="price_asc">Price: Low → High</option>
-              <option value="price_desc">Price: High → Low</option>
-              <option value="name">Name A–Z</option>
-            </select>
-          </div>
-          <div className="d-flex gap-2 flex-wrap">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat}
-                className={`rh-pill ${category === cat ? "active" : ""}`}
-                onClick={() => setCategory(cat)}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+              {cat}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* COUNT */}
       <div className="rh-count">
         Showing {filtered.length} of {products.length} products
       </div>
 
-      {/* GRID */}
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "1.5rem 2rem 5rem" }}>
+      <div className="rh-grid-wrap">
         {filtered.length === 0 ? (
           <div className="rh-empty">
             <div className="rh-empty-icon">◇</div>
             <div className="rh-empty-text">No products found</div>
           </div>
         ) : (
-          <div className="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3">
+          <div className="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3">
             {filtered.map(product => (
               <div className="col" key={product.id}>
-                <div className="rh-card h-100">
+                <div className="rh-card">
                   <div className="rh-card-img-wrap">
                     <img
                       src={product.image || "https://via.placeholder.com/300x300?text=No+Image"}
@@ -448,7 +457,6 @@ export default function RedHotStore() {
         )}
       </div>
 
-      {/* FOOTER */}
       <div className="rh-footer">© 2025 REDHOT — All rights reserved</div>
     </div>
   );
