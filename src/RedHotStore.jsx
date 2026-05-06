@@ -60,22 +60,22 @@ export default function RedHotStore() {
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
         :root {
-          --cream:   #f7f5f2;
-          --warm:    #ede8e0;
-          --sand:    #d4c9b8;
-          --taupe:   #9e8f7e;
-          --umber:   #5c4f3d;
-          --charcoal:#2c2c2c;
-          --white:   #ffffff;
-          --accent:  #7c6a55;
-          --accent2: #a08060;
+          --cream:    #f7f5f2;
+          --warm:     #ede8e0;
+          --sand:     #d4c9b8;
+          --taupe:    #9e8f7e;
+          --umber:    #5c4f3d;
+          --charcoal: #2c2c2c;
+          --white:    #ffffff;
+          --red:      #c81e1e;
+          --red-dim:  rgba(200,30,30,0.12);
         }
 
         * { box-sizing: border-box; }
         body { background: var(--cream) !important; }
 
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: var(--sand); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: var(--red); border-radius: 2px; }
 
         .rh-navbar {
           background: rgba(247,245,242,0.96);
@@ -91,7 +91,7 @@ export default function RedHotStore() {
           font-family: 'Cormorant Garamond', serif;
           font-weight: 700;
           font-size: 1.6rem;
-          color: var(--umber);
+          color: var(--red);
           letter-spacing: 0.04em;
           text-decoration: none;
         }
@@ -109,9 +109,9 @@ export default function RedHotStore() {
           transition: all 0.2s;
         }
         .rh-about-btn:hover {
-          border-color: var(--umber);
-          color: var(--umber);
-          background: var(--warm);
+          border-color: var(--red);
+          color: var(--red);
+          background: var(--red-dim);
         }
 
         .rh-hero {
@@ -137,7 +137,7 @@ export default function RedHotStore() {
           color: var(--charcoal);
           margin-bottom: 1rem;
         }
-        .rh-hero-title span { color: var(--accent); font-style: italic; }
+        .rh-hero-title span { color: var(--red); font-style: italic; }
         .rh-hero-sub {
           font-family: 'DM Sans', sans-serif;
           font-size: 13px;
@@ -164,7 +164,7 @@ export default function RedHotStore() {
           padding: 0.55rem 1rem;
           box-shadow: none !important;
         }
-        .rh-search.form-control:focus { border-color: var(--accent); background: var(--white); }
+        .rh-search.form-control:focus { border-color: var(--red); background: var(--white); }
         .rh-select.form-select {
           font-family: 'DM Sans', sans-serif;
           font-size: 12px;
@@ -177,7 +177,7 @@ export default function RedHotStore() {
           box-shadow: none !important;
           cursor: pointer;
         }
-        .rh-select.form-select:focus { border-color: var(--accent); }
+        .rh-select.form-select:focus { border-color: var(--red); }
 
         .rh-pill {
           font-family: 'DM Sans', sans-serif;
@@ -193,8 +193,8 @@ export default function RedHotStore() {
           transition: all 0.2s;
           text-transform: uppercase;
         }
-        .rh-pill:hover { border-color: var(--umber); color: var(--umber); background: var(--warm); }
-        .rh-pill.active { background: var(--umber); border-color: var(--umber); color: var(--white); }
+        .rh-pill:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+        .rh-pill.active { background: var(--red); border-color: var(--red); color: var(--white); }
 
         .rh-card {
           background: var(--white);
@@ -207,11 +207,10 @@ export default function RedHotStore() {
         }
         .rh-card:hover {
           transform: translateY(-6px);
-          box-shadow: 0 20px 40px rgba(92,79,61,0.12);
+          box-shadow: 0 20px 40px rgba(200,30,30,0.10);
           z-index: 2;
         }
 
-        /* Image wrapper clips the image to rounded top corners */
         .rh-card-img-wrap {
           border-radius: 6px 6px 0 0;
           overflow: hidden;
@@ -227,7 +226,7 @@ export default function RedHotStore() {
 
         .rh-badge-hot {
           position: absolute; top: 12px; left: 12px;
-          background: var(--umber); color: var(--white);
+          background: var(--red); color: var(--white);
           font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 600;
           letter-spacing: 0.2em; padding: 3px 10px; border-radius: 2px; text-transform: uppercase;
         }
@@ -250,14 +249,21 @@ export default function RedHotStore() {
           font-family: 'Cormorant Garamond', serif; font-size: 1.1rem;
           font-weight: 600; color: var(--charcoal); line-height: 1.3; margin-bottom: 14px;
         }
-        .rh-price { font-family: 'DM Sans', sans-serif; font-size: 1.05rem; font-weight: 600; color: var(--umber); }
+        .rh-price {
+          font-family: 'DM Sans', sans-serif; font-size: 1.05rem;
+          font-weight: 600; color: var(--red);
+        }
         .rh-buy-btn {
           font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 600;
           letter-spacing: 0.2em; text-transform: uppercase;
-          background: var(--charcoal); color: var(--white);
+          background: var(--red); color: var(--white);
           border: none; padding: 8px 18px; border-radius: 3px; cursor: pointer; transition: all 0.2s;
         }
-        .rh-buy-btn:hover { background: var(--umber); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(92,79,61,0.25); }
+        .rh-buy-btn:hover {
+          background: #a01515;
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(200,30,30,0.3);
+        }
 
         .rh-count {
           font-family: 'DM Sans', sans-serif; font-size: 10px;
@@ -277,7 +283,7 @@ export default function RedHotStore() {
         }
         .rh-spinner {
           width: 32px; height: 32px;
-          border: 2px solid var(--sand); border-top-color: var(--umber);
+          border: 2px solid var(--sand); border-top-color: var(--red);
           border-radius: 50%; animation: rh-spin 0.8s linear infinite;
         }
         .rh-redirect-text {
@@ -294,14 +300,14 @@ export default function RedHotStore() {
         .rh-about-modal {
           background: var(--white); border-radius: 8px;
           padding: 48px 44px; width: 480px; max-width: 95vw;
-          position: relative; border-top: 3px solid var(--umber);
+          position: relative; border-top: 3px solid var(--red);
         }
         .rh-about-close {
           position: absolute; top: 16px; right: 18px;
           background: none; border: none; font-size: 20px;
           color: var(--taupe); cursor: pointer; line-height: 1;
         }
-        .rh-about-close:hover { color: var(--umber); }
+        .rh-about-close:hover { color: var(--red); }
 
         .rh-footer {
           background: var(--charcoal); color: var(--taupe);
@@ -323,10 +329,10 @@ export default function RedHotStore() {
         <div className="rh-about-overlay" onClick={() => setShowAbout(false)}>
           <div className="rh-about-modal" onClick={e => e.stopPropagation()}>
             <button className="rh-about-close" onClick={() => setShowAbout(false)}>✕</button>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", fontWeight: 700, color: "#5c4f3d", marginBottom: 8 }}>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", fontWeight: 700, color: "#c81e1e", marginBottom: 8 }}>
               About Redhot
             </div>
-            <div style={{ width: 40, height: 2, background: "#d4c9b8", marginBottom: 20 }} />
+            <div style={{ width: 40, height: 2, background: "#c81e1e", marginBottom: 20 }} />
             <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "#9e8f7e", lineHeight: 1.8, marginBottom: 16 }}>
               Redhot is a curated affiliate store bringing you the finest picks across fashion, accessories, and electronics.
             </p>
@@ -412,7 +418,6 @@ export default function RedHotStore() {
             {filtered.map(product => (
               <div className="col" key={product.id}>
                 <div className="rh-card h-100">
-                  {/* Image wrapper handles border-radius clipping independently */}
                   <div className="rh-card-img-wrap">
                     <img
                       src={product.image || "https://via.placeholder.com/300x300?text=No+Image"}

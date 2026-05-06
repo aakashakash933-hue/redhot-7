@@ -17,7 +17,7 @@ function useProducts() {
   return { products, refresh: fetchProducts };
 }
 
-const ADMIN_USER = "admin";
+const ADMIN_USER = "Akash";
 const ADMIN_PASS = "redhot2026";
 const CATEGORIES = ["Men", "Women", "Accessories", "Electronics"];
 const emptyForm = { name: "", price: "", category: "", badge: "", image: "", affiliate_link: "" };
