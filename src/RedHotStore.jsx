@@ -4,6 +4,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 function useProducts() {
   const [products, setProducts] = useState([]);
+  const [loading,  setLoading]  = useState(true);
   useEffect(() => {
     axios
       .get("https://redhot-7.onrender.com/products")
@@ -11,15 +12,16 @@ function useProducts() {
         const shuffled = [...res.data].sort(() => Math.random() - 0.5);
         setProducts(shuffled);
       })
-      .catch(err => console.error("API Error:", err));
+      .catch(err => console.error("API Error:", err))
+      .finally(() => setLoading(false));
   }, []);
-  return products;
+  return { products, loading };
 }
 
 const CATEGORIES = ["All", "Men", "Women", "Accessories", "Electronics"];
 
 export default function RedHotStore({ onNavigateAdmin }) {
-  const products = useProducts();
+  const { products, loading } = useProducts();
 
   const [search,      setSearch]      = useState("");
   const [category,    setCategory]    = useState("All");
@@ -325,6 +327,37 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-empty-icon { font-size: 3rem; margin-bottom: 1rem; }
         .rh-empty-text { font-family: 'DM Sans', sans-serif; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; }
 
+        .rh-skeleton {
+          background: var(--white);
+          border: 1px solid var(--warm);
+          border-radius: 6px;
+          overflow: hidden;
+          height: 100%;
+        }
+        .rh-skeleton-img {
+          width: 100%; height: 260px;
+          background: linear-gradient(90deg, var(--warm) 25%, var(--cream) 50%, var(--warm) 75%);
+          background-size: 200% 100%;
+          animation: rh-shimmer 1.4s infinite;
+        }
+        .rh-skeleton-body { padding: 18px 16px 16px; }
+        .rh-skeleton-line {
+          height: 10px; border-radius: 4px; margin-bottom: 10px;
+          background: linear-gradient(90deg, var(--warm) 25%, var(--cream) 50%, var(--warm) 75%);
+          background-size: 200% 100%;
+          animation: rh-shimmer 1.4s infinite;
+        }
+        @keyframes rh-shimmer {
+          0%   { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+
+        @media (max-width: 576px) {
+          .rh-select.form-select { width: 100% !important; }
+          .rh-filters { padding: 1rem; }
+          .rh-count { padding: 1rem 1rem 0; }
+        }
+
         .rh-overlay {
           position: fixed; inset: 0;
           background: rgba(247,245,242,0.92); backdrop-filter: blur(6px);
@@ -448,11 +481,26 @@ export default function RedHotStore({ onNavigateAdmin }) {
       </div>
 
       <div className="rh-count">
-        Showing {filtered.length} of {products.length} products
+        {loading ? "Loading products…" : `Showing ${filtered.length} of ${products.length} products`}
       </div>
 
       <div className="rh-grid-wrap">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3">
+            {[...Array(6)].map((_, i) => (
+              <div className="col" key={i}>
+                <div className="rh-skeleton">
+                  <div className="rh-skeleton-img" />
+                  <div className="rh-skeleton-body">
+                    <div className="rh-skeleton-line" style={{ width: "40%", height: 8 }} />
+                    <div className="rh-skeleton-line" style={{ width: "80%" }} />
+                    <div className="rh-skeleton-line" style={{ width: "50%", marginTop: 14 }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="rh-empty">
             <div className="rh-empty-icon">◇</div>
             <div className="rh-empty-text">No products found</div>
