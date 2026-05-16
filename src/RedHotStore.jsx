@@ -7,7 +7,10 @@ function useProducts() {
   useEffect(() => {
     axios
       .get("http://localhost:3001/products")
-      .then(res => setProducts(res.data))
+      .then(res => {
+        const shuffled = [...res.data].sort(() => Math.random() - 0.5);
+        setProducts(shuffled);
+      })
       .catch(err => console.error("API Error:", err));
   }, []);
   return products;
@@ -363,7 +366,7 @@ export default function RedHotStore() {
       )}
 
       <div className="rh-navbar">
-        <a className="rh-brand">redhot</a>
+        <span className="rh-brand">redhot</span>
         <button className="rh-about-btn" onClick={() => setShowAbout(true)}>About</button>
       </div>
 
@@ -429,10 +432,10 @@ export default function RedHotStore() {
                 <div className="rh-card">
                   <div className="rh-card-img-wrap">
                     <img
-                      src={product.image || "https://via.placeholder.com/300x300?text=No+Image"}
+                      src={product.image || "https://placehold.co/300x300?text=No+Image"}
                       alt={product.name}
                       className="rh-card-img"
-                      onError={e => { e.target.src = "https://via.placeholder.com/300x300?text=No+Image"; }}
+                      onError={e => { e.target.src = "https://placehold.co/300x300?text=No+Image"; }}
                     />
                     {product.badge && (
                       <span className={product.badge === "HOT" ? "rh-badge-hot" : "rh-badge-new"}>
