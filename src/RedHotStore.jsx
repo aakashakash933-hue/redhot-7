@@ -402,9 +402,6 @@ export default function RedHotStore({ onNavigateAdmin }) {
         <span className="rh-brand">redhot</span>
         <div className="rh-nav-actions">
           <button className="rh-about-btn" onClick={() => setShowAbout(true)}>About</button>
-          {onNavigateAdmin && (
-            <button className="rh-admin-btn" onClick={onNavigateAdmin}>Admin</button>
-          )}
         </div>
       </div>
 
