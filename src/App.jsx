@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import RedHotStore from "./RedHotStore";
-import RedHotAdmin from "./RedHotAdmin";
 import RedHotIntro from "./RedHotIntro";
 
-// ── page keys ──────────────────────────────────────────────────────────────
+const RedHotAdmin = lazy(() => import("./RedHotAdmin"));
+
 const PAGES = { INTRO: "intro", STORE: "store", ADMIN: "admin" };
 
-// ── CSS injected once ───────────────────────────────────────────────────────
 const TRANSITION_CSS = `
   .rh-page {
     position: fixed;
@@ -16,8 +15,6 @@ const TRANSITION_CSS = `
     overflow-x: hidden;
     background: #f7f5f2;
   }
-
-  /* forward: new page slides up from below */
   .rh-page-enter {
     opacity: 0;
     transform: translateY(28px) scale(0.985);
@@ -40,8 +37,6 @@ const TRANSITION_CSS = `
     transition: opacity 0.38s cubic-bezier(0.55, 0, 1, 0.45),
                 transform 0.38s cubic-bezier(0.55, 0, 1, 0.45);
   }
-
-  /* back: new page slides down from above */
   .rh-page-back-enter {
     opacity: 0;
     transform: translateY(-28px) scale(0.985);
@@ -64,11 +59,7 @@ const TRANSITION_CSS = `
     transition: opacity 0.38s cubic-bezier(0.55, 0, 1, 0.45),
                 transform 0.38s cubic-bezier(0.55, 0, 1, 0.45);
   }
-
-  /* admin dark bg */
   .rh-page[data-page="admin"] { background: #0a0a0a; }
-
-  /* back button */
   .rh-back-btn {
     position: fixed;
     bottom: 28px;
@@ -103,13 +94,24 @@ const TRANSITION_CSS = `
     transform: translateY(12px);
     pointer-events: none;
   }
+  .rh-admin-loading {
+    position: fixed; inset: 0; background: #0a0a0a;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .rh-admin-spinner {
+    width: 28px; height: 28px;
+    border: 2px solid #222;
+    border-top-color: #c0392b;
+    border-radius: 50%;
+    animation: rh-spin 0.8s linear infinite;
+  }
+  @keyframes rh-spin { to { transform: rotate(360deg); } }
 `;
 
-// ── pager hook ─────────────────────────────────────────────────────────────
 function usePager(initial) {
   const [current,  setCurrent]  = useState(initial);
   const [previous, setPrevious] = useState(null);
-  const [phase,    setPhase]    = useState("idle"); // idle | exit | enter
+  const [phase,    setPhase]    = useState("idle");
   const [isBack,   setIsBack]   = useState(false);
   const history  = useRef([initial]);
   const pending  = useRef(null);
@@ -149,11 +151,9 @@ function usePager(initial) {
   };
 
   const canGoBack = history.current.length > 1;
-
   return { current, previous, phase, isBack, navigate, goBack, canGoBack };
 }
 
-// ── page slot ─────────────────────────────────────────────────────────────
 function PageSlot({ children, pageKey, phase, isBack, isCurrent }) {
   const prefix = isBack ? "rh-page-back" : "rh-page";
   const cls = [
@@ -171,20 +171,23 @@ function PageSlot({ children, pageKey, phase, isBack, isCurrent }) {
   );
 }
 
-// ── app ────────────────────────────────────────────────────────────────────
 export default function App() {
   const { current, previous, phase, isBack, navigate, goBack, canGoBack } =
     usePager(PAGES.INTRO);
 
-  // keyboard ESC = back
   useEffect(() => {
     const fn = (e) => { if (e.key === "Escape" && canGoBack) goBack(); };
     window.addEventListener("keydown", fn);
     return () => window.removeEventListener("keydown", fn);
   }, [canGoBack, goBack]);
 
-  const showBack =
-    canGoBack && current !== PAGES.INTRO && phase === "idle";
+  const showBack = canGoBack && current !== PAGES.INTRO && phase === "idle";
+
+  const adminFallback = (
+    <div className="rh-admin-loading">
+      <div className="rh-admin-spinner" />
+    </div>
+  );
 
   const pageMap = {
     [PAGES.INTRO]: (
@@ -194,7 +197,9 @@ export default function App() {
       <RedHotStore onNavigateAdmin={() => navigate(PAGES.ADMIN)} />
     ),
     [PAGES.ADMIN]: (
-      <RedHotAdmin onNavigateStore={() => navigate(PAGES.STORE)} />
+      <Suspense fallback={adminFallback}>
+        <RedHotAdmin onNavigateStore={() => navigate(PAGES.STORE)} />
+      </Suspense>
     ),
   };
 
@@ -202,29 +207,16 @@ export default function App() {
     <>
       <style>{TRANSITION_CSS}</style>
 
-      {/* active page */}
-      <PageSlot
-        pageKey={current}
-        phase={phase}
-        isBack={isBack}
-        isCurrent={true}
-      >
+      <PageSlot pageKey={current} phase={phase} isBack={isBack} isCurrent={true}>
         {pageMap[current]}
       </PageSlot>
 
-      {/* outgoing page (rendered only during exit) */}
       {previous && (
-        <PageSlot
-          pageKey={previous}
-          phase={phase}
-          isBack={isBack}
-          isCurrent={false}
-        >
+        <PageSlot pageKey={previous} phase={phase} isBack={isBack} isCurrent={false}>
           {pageMap[previous]}
         </PageSlot>
       )}
 
-      {/* floating back button */}
       <button
         className={`rh-back-btn${showBack ? "" : " hidden"}`}
         onClick={goBack}
