@@ -1,18 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 
-export default function RedhotIntro({ onComplete }) {
+export default function RedHotIntro({ onComplete }) {
   const [phase, setPhase] = useState(0);
+  const [glitch, setGlitch] = useState(false);
   const audioCtxRef = useRef(null);
-
-  // 0 = cream screen
-  // 1 = thunder bg + flash
-  // 2 = logo appears
-  // 3 = tagline appears
-  // 4 = exit fade
 
   const playThunder = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === "suspended") ctx.resume();
       audioCtxRef.current = ctx;
       const rumbleDuration = 2.8;
       const sampleRate = ctx.sampleRate;
@@ -64,11 +60,20 @@ export default function RedhotIntro({ onComplete }) {
   useEffect(() => {
     const t0 = setTimeout(() => { setPhase(1); playThunder(); }, 300);
     const t1 = setTimeout(() => setPhase(2), 900);
-    const t2 = setTimeout(() => setPhase(3), 1800);
+    const t2 = setTimeout(() => { setPhase(3); triggerGlitch(); }, 1800);
     const t3 = setTimeout(() => setPhase(4), 3200);
     const t4 = setTimeout(() => { if (onComplete) onComplete(); }, 4000);
     return () => [t0, t1, t2, t3, t4].forEach(clearTimeout);
   }, []);
+
+  const triggerGlitch = () => {
+    let count = 0;
+    const interval = setInterval(() => {
+      setGlitch(g => !g);
+      count++;
+      if (count > 8) clearInterval(interval);
+    }, 80);
+  };
 
   return (
     <div style={{
@@ -115,7 +120,63 @@ export default function RedhotIntro({ onComplete }) {
           from { width: 0; }
           to   { width: 100%; }
         }
+        @keyframes glitchA {
+          0%   { clip-path: inset(0 0 95% 0); transform: translate(-4px, 0); }
+          20%  { clip-path: inset(30% 0 50% 0); transform: translate(4px, 0); }
+          40%  { clip-path: inset(60% 0 20% 0); transform: translate(-2px, 0); }
+          60%  { clip-path: inset(10% 0 80% 0); transform: translate(3px, 0); }
+          80%  { clip-path: inset(80% 0 5% 0);  transform: translate(-3px, 0); }
+          100% { clip-path: inset(0 0 95% 0);   transform: translate(0, 0); }
+        }
+        @keyframes glitchB {
+          0%   { clip-path: inset(50% 0 30% 0); transform: translate(4px, 0); }
+          25%  { clip-path: inset(20% 0 60% 0); transform: translate(-4px, 0); }
+          50%  { clip-path: inset(70% 0 10% 0); transform: translate(2px, 0); }
+          75%  { clip-path: inset(5% 0 85% 0);  transform: translate(-2px, 0); }
+          100% { clip-path: inset(50% 0 30% 0); transform: translate(0, 0); }
+        }
+        @keyframes scanline {
+          0%   { transform: translateY(-100%); }
+          100% { transform: translateY(100vh); }
+        }
+        .glitch-wrap { position: relative; display: inline-block; }
+        .glitch-wrap::before,
+        .glitch-wrap::after {
+          content: attr(data-text);
+          position: absolute;
+          inset: 0;
+          font-family: 'Cormorant Garamond', serif;
+          font-weight: 700;
+          font-size: inherit;
+          line-height: 1;
+          letter-spacing: 0.02em;
+        }
+        .glitch-wrap::before {
+          color: #00ffff;
+          animation: glitchA 0.15s steps(1) infinite;
+          opacity: 0.7;
+        }
+        .glitch-wrap::after {
+          color: #ff0055;
+          animation: glitchB 0.15s steps(1) infinite;
+          opacity: 0.7;
+        }
       `}</style>
+
+      {/* SCANLINE */}
+      {phase >= 1 && (
+        <div style={{
+          position: "absolute", inset: 0,
+          pointerEvents: "none", zIndex: 20, overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute", left: 0, right: 0,
+            height: "2px",
+            background: "rgba(200,30,30,0.3)",
+            animation: "scanline 2s linear infinite",
+          }} />
+        </div>
+      )}
 
       {/* FLASH */}
       {phase >= 1 && (
@@ -167,14 +228,22 @@ export default function RedhotIntro({ onComplete }) {
               <path d="M8,43 L4,36 M8,43 L11,39"
                 stroke="#c81e1e" strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.6" />
             </svg>
-            <span style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontWeight: 700,
-              fontSize: "clamp(3.2rem, 10vw, 7rem)",
-              lineHeight: 1,
-              letterSpacing: "0.02em",
-              color: "#c81e1e",
-            }}>redhot</span>
+
+            {/* GLITCH TEXT */}
+            <span
+              className={glitch ? "glitch-wrap" : ""}
+              data-text="redhot"
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontWeight: 700,
+                fontSize: "clamp(3.2rem, 10vw, 7rem)",
+                lineHeight: 1,
+                letterSpacing: "0.02em",
+                color: "#c81e1e",
+                display: "inline-block",
+              }}
+            >redhot</span>
+
             <span style={{
               fontFamily: "'Cormorant Garamond', serif",
               fontWeight: 300,
@@ -199,7 +268,6 @@ export default function RedhotIntro({ onComplete }) {
           }} />
         )}
 
-        {/* TAGLINE — always visible once phase >= 3 */}
         {phase >= 3 && (
           <div style={{
             fontFamily: "'DM Sans', sans-serif",
@@ -215,7 +283,6 @@ export default function RedhotIntro({ onComplete }) {
         )}
       </div>
 
-      {/* BOTTOM STAMP */}
       {phase >= 3 && (
         <div style={{
           position: "absolute", bottom: "2rem",
