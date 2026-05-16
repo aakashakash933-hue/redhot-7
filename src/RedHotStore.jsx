@@ -58,7 +58,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
   };
 
   return (
-    <div style={{ fontFamily: "'Cormorant Garamond', 'Georgia', serif", background: "#f7f5f2", minHeight: "100vh", color: "#2c2c2c" }}>
+    <div style={{ fontFamily: "'Cormorant Garamond', 'Georgia', serif", background: "#f7f5f2", minHeight: "100vh", color: "#2c2c2c", overflowX: "hidden" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -314,10 +314,11 @@ export default function RedHotStore({ onNavigateAdmin }) {
 
         .rh-grid-wrap {
           width: 100%;
-          padding: 1.5rem 2rem 5rem;
+          padding: 1.5rem 1rem 5rem;
           position: relative;
           z-index: 0;
           isolation: isolate;
+          overflow: hidden;
         }
 
         .rh-empty { text-align: center; padding: 100px 0; color: var(--sand); width: 100%; }
