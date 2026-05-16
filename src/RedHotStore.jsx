@@ -319,6 +319,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-grid-wrap {
           width: 100%;
           padding: 1.5rem 2rem 5rem;
+          isolation: isolate;
         }
 
         .rh-empty { text-align: center; padding: 100px 0; color: var(--sand); width: 100%; }
