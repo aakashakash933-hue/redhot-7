@@ -6,7 +6,7 @@ function useProducts() {
   const [products, setProducts] = useState([]);
   useEffect(() => {
     axios
-      .get("https://redhot-7.onrender.com/products")
+      .get("http://localhost:3001/products")
       .then(res => {
         const shuffled = [...res.data].sort(() => Math.random() - 0.5);
         setProducts(shuffled);

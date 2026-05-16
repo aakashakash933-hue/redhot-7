@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
-const API = ("https://redhot-7.onrender.com/products");
+const API = "https://redhot-7.onrender.com";
 
 function useProducts() {
   const [products, setProducts] = useState([]);

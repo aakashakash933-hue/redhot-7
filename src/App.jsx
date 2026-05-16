@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
-import RedHotIntro from "./RedHotIntro"; 
+import RedHotIntro from "./RedHotIntro";
 import RedHotStore from "./RedHotStore";
 import RedHotAdmin from "./RedHotAdmin";
 
