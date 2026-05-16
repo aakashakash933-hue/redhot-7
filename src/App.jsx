@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
-import RedhotIntro from "./RedhotIntro";
+import RedHotIntro from "./RedHotIntro"; 
 import RedHotStore from "./RedHotStore";
 import RedHotAdmin from "./RedHotAdmin";
 
@@ -14,7 +14,7 @@ export default function App() {
   return (
     <>
       {!introComplete && (
-        <RedhotIntro onComplete={() => setIntroComplete(true)} />
+        <RedHotIntro onComplete={() => setIntroComplete(true)} />
       )}
       <RedHotStore />
     </>
