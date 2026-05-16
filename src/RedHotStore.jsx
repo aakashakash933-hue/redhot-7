@@ -243,16 +243,12 @@ export default function RedHotStore({ onNavigateAdmin }) {
           background: var(--white);
           border: 1px solid var(--warm);
           border-radius: 6px;
-          overflow: visible;
+          overflow: hidden;
           transition: transform 0.35s ease, box-shadow 0.35s ease;
-          position: relative;
-          z-index: 1;
           height: 100%;
         }
         .rh-card:hover {
-          transform: translateY(-6px);
           box-shadow: 0 20px 40px rgba(200,30,30,0.10);
-          z-index: 2;
         }
 
         .rh-card-img-wrap {
