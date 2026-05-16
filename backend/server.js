@@ -37,9 +37,6 @@ app.delete("/products/:id", (req, res) => {
   res.json({ success: true });
 });
 
-app.listen(3001, () => {
-  console.log("Server running on port 3001");
-});
 app.put("/products/:id", (req, res) => {
   const data = JSON.parse(fs.readFileSync(FILE));
   const newData = data.map(p =>
@@ -47,4 +44,8 @@ app.put("/products/:id", (req, res) => {
   );
   fs.writeFileSync(FILE, JSON.stringify(newData, null, 2));
   res.json({ success: true });
+});
+
+app.listen(process.env.PORT || 3001, () => {
+  console.log("Server running on port", process.env.PORT || 3001);
 });
