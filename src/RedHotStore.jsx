@@ -18,7 +18,7 @@ function useProducts() {
 
 const CATEGORIES = ["All", "Men", "Women", "Accessories", "Electronics"];
 
-export default function RedHotStore() {
+export default function RedHotStore({ onNavigateAdmin }) {
   const products = useProducts();
 
   const [search,      setSearch]      = useState("");
@@ -97,6 +97,9 @@ export default function RedHotStore() {
           align-items: center;
           justify-content: space-between;
           width: 100%;
+          position: sticky;
+          top: 0;
+          z-index: 100;
         }
         .rh-brand {
           font-family: 'Cormorant Garamond', serif;
@@ -105,6 +108,12 @@ export default function RedHotStore() {
           color: var(--red);
           letter-spacing: 0.04em;
           text-decoration: none;
+          cursor: default;
+        }
+        .rh-nav-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
         }
         .rh-about-btn {
           font-family: 'DM Sans', sans-serif;
@@ -123,6 +132,24 @@ export default function RedHotStore() {
           border-color: var(--red);
           color: var(--red);
           background: var(--red-dim);
+        }
+        .rh-admin-btn {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 11px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          background: var(--red);
+          border: 1px solid var(--red);
+          color: #fff;
+          padding: 7px 18px;
+          border-radius: 3px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .rh-admin-btn:hover {
+          background: #a01515;
+          border-color: #a01515;
+          box-shadow: 0 4px 14px rgba(200,30,30,0.3);
         }
 
         .rh-hero {
@@ -166,6 +193,9 @@ export default function RedHotStore() {
           border-bottom: 1px solid var(--warm);
           padding: 1.5rem 2rem;
           width: 100%;
+          position: sticky;
+          top: 64px;
+          z-index: 90;
         }
         .rh-search.form-control {
           font-family: 'DM Sans', sans-serif;
@@ -367,7 +397,12 @@ export default function RedHotStore() {
 
       <div className="rh-navbar">
         <span className="rh-brand">redhot</span>
-        <button className="rh-about-btn" onClick={() => setShowAbout(true)}>About</button>
+        <div className="rh-nav-actions">
+          <button className="rh-about-btn" onClick={() => setShowAbout(true)}>About</button>
+          {onNavigateAdmin && (
+            <button className="rh-admin-btn" onClick={onNavigateAdmin}>Admin</button>
+          )}
+        </div>
       </div>
 
       <div className="rh-hero">
