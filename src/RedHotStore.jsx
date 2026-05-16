@@ -99,7 +99,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
           width: 100%;
           position: sticky;
           top: 0;
-          z-index: 100;
+          z-index: 9999;
         }
         .rh-brand {
           font-family: 'Cormorant Garamond', serif;
@@ -319,6 +319,8 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-grid-wrap {
           width: 100%;
           padding: 1.5rem 2rem 5rem;
+          position: relative;
+          z-index: 0;
           isolation: isolate;
         }
 
