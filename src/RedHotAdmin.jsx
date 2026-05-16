@@ -22,7 +22,7 @@ const ADMIN_PASS = "redhot2026";
 const CATEGORIES = ["Men", "Women", "Accessories", "Electronics"];
 const emptyForm = { name: "", price: "", category: "", badge: "", image: "", affiliate_link: "" };
 
-export default function RedHotAdmin() {
+export default function RedHotAdmin({ onNavigateStore }) {
   const [loggedIn, setLoggedIn] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [loginError, setLoginError] = useState("");
@@ -118,6 +118,8 @@ export default function RedHotAdmin() {
     .rha-btn-del:hover { background:#1a0a0a; border-color:var(--red); color:var(--red); }
     .rha-btn-edit { background:transparent; border:1px solid var(--border); color:var(--muted); font-size:11px; letter-spacing:.1em; padding:6px 14px; border-radius:3px; cursor:pointer; transition:all .2s; font-family:'Jost',sans-serif; margin-right:6px; }
     .rha-btn-edit:hover { border-color:var(--muted2); color:var(--text); }
+    .rha-btn-store { background:transparent; border:1px solid #2a2a1a; color:#7a7a30; font-size:11px; letter-spacing:.12em; padding:7px 16px; border-radius:3px; cursor:pointer; transition:all .2s; font-family:'Jost',sans-serif; }
+    .rha-btn-store:hover { border-color:#c8a01e; color:#c8a01e; background:#1a1a0a; }
     .rha-card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; }
     .rha-row { display:grid; grid-template-columns:56px 1fr 110px 120px 90px 80px 140px; gap:12px; padding:14px 20px; border-bottom:1px solid #161616; align-items:center; transition:background .15s; }
     .rha-row:hover { background:#131313; }
@@ -158,7 +160,10 @@ export default function RedHotAdmin() {
           <span style={{ fontFamily:"'Playfair Display'", fontSize:20, fontWeight:900, color:"#c0392b" }}>redhot</span>
           <span style={{ fontSize:9, letterSpacing:"0.2em", background:"#c0392b", color:"#fff", padding:"2px 8px", borderRadius:2, marginLeft:10, verticalAlign:"middle" }}>ADMIN</span>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          {onNavigateStore && (
+            <button className="rha-btn-store" onClick={onNavigateStore}>← STORE</button>
+          )}
           <span style={{ fontSize:11, letterSpacing:"0.15em", color:"#555" }}>Logged in as admin</span>
           <button className="rha-btn-g" style={{ padding:"7px 16px", fontSize:11 }} onClick={() => setLoggedIn(false)}>LOGOUT</button>
         </div>
