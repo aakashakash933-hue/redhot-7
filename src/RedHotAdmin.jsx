@@ -3,7 +3,11 @@ import axios from "axios";
 
 const API = "https://redhot-7.onrender.com";
 
-function useProducts() {
+function authHeader(token) {
+  return { Authorization: `Bearer ${token}` };
+}
+
+function useProducts(token) {
   const [products, setProducts] = useState([]);
 
   const fetchProducts = () => {
@@ -17,24 +21,27 @@ function useProducts() {
   return { products, refresh: fetchProducts };
 }
 
-const ADMIN_USER = "Akash";
-const ADMIN_PASS = "redhot2026";
 const CATEGORIES = ["Men", "Women", "Accessories", "Electronics"];
-const emptyForm = { name: "", price: "", category: "", badge: "", image: "", affiliate_link: "" };
+const emptyForm = { name: "", price: "", category: "", badge: "", image: "", affiliate_link: "", description: "" };
 
 export default function RedHotAdmin({ onNavigateStore }) {
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [token, setToken]       = useState(() => sessionStorage.getItem("rh_token") || "");
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
 
-  const { products, refresh } = useProducts();
-  const [search, setSearch] = useState("");
-  const [form, setForm] = useState(emptyForm);
+  const { products, refresh } = useProducts(token);
+  const [search, setSearch]   = useState("");
+  const [form, setForm]       = useState(emptyForm);
   const [formError, setFormError] = useState("");
-  const [editId, setEditId] = useState(null);
+  const [editId, setEditId]   = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [deleteId, setDeleteId] = useState(null);
-  const [toast, setToast] = useState("");
+  const [toast, setToast]     = useState("");
+  const [selected, setSelected] = useState(new Set());
+  const [bulkConfirm, setBulkConfirm] = useState(false);
+
+  const loggedIn = !!token;
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2800); };
 
@@ -50,14 +57,27 @@ export default function RedHotAdmin({ onNavigateStore }) {
     (p.category || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (loginForm.username === ADMIN_USER && loginForm.password === ADMIN_PASS) {
-      setLoggedIn(true); setLoginError("");
-    } else {
+    setLoginLoading(true);
+    try {
+      const res = await axios.post(`${API}/api/login`, loginForm);
+      const t = res.data.token;
+      sessionStorage.setItem("rh_token", t);
+      setToken(t);
+      setLoginError("");
+    } catch {
       setLoginError("Invalid credentials.");
       setLoginForm(f => ({ ...f, password: "" }));
+    } finally {
+      setLoginLoading(false);
     }
+  };
+
+  const handleLogout = async () => {
+    try { await axios.post(`${API}/api/logout`, {}, { headers: authHeader(token) }); } catch {}
+    sessionStorage.removeItem("rh_token");
+    setToken("");
   };
 
   const handleAdd = async (e) => {
@@ -65,41 +85,82 @@ export default function RedHotAdmin({ onNavigateStore }) {
     if (!form.name || !form.price || !form.category || !form.image) {
       setFormError("Name, price, category and image are required."); return;
     }
-    await axios.post(`${API}/products`, {
-      name: form.name.trim(),
-      price: parseInt(form.price),
-      category: form.category,
-      badge: form.badge,
-      image: form.image.trim(),
-      affiliate_link: form.affiliate_link.trim() || "#"
-    });
-    refresh();
-    setForm(emptyForm);
-    setFormError("");
-    showToast("✓ Product added — visible on store now!");
+    try {
+      await axios.post(`${API}/products`, {
+        name: form.name.trim(),
+        price: parseInt(form.price),
+        category: form.category,
+        badge: form.badge,
+        image: form.image.trim(),
+        affiliate_link: form.affiliate_link.trim() || "#",
+        description: form.description.trim(),
+      }, { headers: authHeader(token) });
+      refresh();
+      setForm(emptyForm);
+      setFormError("");
+      showToast("✓ Product added — visible on store now!");
+    } catch (err) {
+      if (err.response?.status === 401) { handleLogout(); }
+      setFormError("Failed to add product.");
+    }
   };
 
   const openEdit = (product) => {
     setEditId(product.id);
-    setEditForm({ ...product, price: String(product.price) });
+    setEditForm({ ...product, price: String(product.price), description: product.description || "" });
   };
 
   const handleSaveEdit = async (e) => {
     e.preventDefault();
-    await axios.put(`${API}/products/${editId}`, {
-      ...editForm,
-      price: parseInt(editForm.price)
-    });
-    refresh();
-    setEditId(null);
-    showToast("✓ Product updated");
+    try {
+      await axios.put(`${API}/products/${editId}`, {
+        ...editForm, price: parseInt(editForm.price)
+      }, { headers: authHeader(token) });
+      refresh();
+      setEditId(null);
+      showToast("✓ Product updated");
+    } catch (err) {
+      if (err.response?.status === 401) handleLogout();
+    }
   };
 
   const confirmDelete = async () => {
-    await axios.delete(`${API}/products/${deleteId}`);
-    refresh();
-    setDeleteId(null);
-    showToast("🗑 Product deleted");
+    try {
+      await axios.delete(`${API}/products/${deleteId}`, { headers: authHeader(token) });
+      refresh();
+      setDeleteId(null);
+      showToast("🗑 Product deleted");
+    } catch (err) {
+      if (err.response?.status === 401) handleLogout();
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === filtered.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map(p => p.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      await axios.post(`${API}/products/bulk-delete`, { ids: [...selected] }, { headers: authHeader(token) });
+      refresh();
+      setSelected(new Set());
+      setBulkConfirm(false);
+      showToast(`🗑 ${selected.size} products deleted`);
+    } catch (err) {
+      if (err.response?.status === 401) handleLogout();
+    }
   };
 
   const css = `
@@ -121,15 +182,18 @@ export default function RedHotAdmin({ onNavigateStore }) {
     .rha-btn-store { background:transparent; border:1px solid #2a2a1a; color:#7a7a30; font-size:11px; letter-spacing:.12em; padding:7px 16px; border-radius:3px; cursor:pointer; transition:all .2s; font-family:'Jost',sans-serif; }
     .rha-btn-store:hover { border-color:#c8a01e; color:#c8a01e; background:#1a1a0a; }
     .rha-card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; }
-    .rha-row { display:grid; grid-template-columns:56px 1fr 110px 120px 90px 80px 140px; gap:12px; padding:14px 20px; border-bottom:1px solid #161616; align-items:center; transition:background .15s; }
+    .rha-row { display:grid; grid-template-columns:32px 56px 1fr 110px 120px 90px 80px 140px; gap:12px; padding:14px 20px; border-bottom:1px solid #161616; align-items:center; transition:background .15s; }
     .rha-row:hover { background:#131313; }
-    .rha-head { display:grid; grid-template-columns:56px 1fr 110px 120px 90px 80px 140px; gap:12px; padding:12px 20px; background:#0d0d0d; border-bottom:1px solid var(--border); }
+    .rha-row.selected { background:#1a0e0e; }
+    .rha-head { display:grid; grid-template-columns:32px 56px 1fr 110px 120px 90px 80px 140px; gap:12px; padding:12px 20px; background:#0d0d0d; border-bottom:1px solid var(--border); }
     .rha-overlay { position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:200; display:flex; align-items:center; justify-content:center; }
-    .rha-modal { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:36px; width:500px; max-width:95vw; position:relative; }
+    .rha-modal { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:36px; width:540px; max-width:95vw; position:relative; max-height:90vh; overflow-y:auto; }
     .rha-modal::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--red),var(--red2)); border-radius:8px 8px 0 0; }
     .rha-toast { position:fixed; bottom:28px; right:28px; background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--red); padding:14px 22px; border-radius:4px; font-size:13px; z-index:999; animation:slideUp .3s ease; }
+    .rha-checkbox { width:16px; height:16px; accent-color:var(--red); cursor:pointer; }
+    .rha-img-preview { width:100%; height:140px; object-fit:cover; border-radius:4px; margin-top:8px; background:#1a1a1a; border:1px solid var(--border); display:block; }
     @keyframes slideUp { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
-    @media(max-width:900px) { .rha-row,.rha-head { grid-template-columns:48px 1fr 90px 130px; } .rha-row>*:nth-child(n+5),.rha-head>*:nth-child(n+5){display:none;} }
+    @media(max-width:900px) { .rha-row,.rha-head { grid-template-columns:32px 48px 1fr 90px 130px; } .rha-row>*:nth-child(n+6),.rha-head>*:nth-child(n+6){display:none;} }
   `;
 
   if (!loggedIn) return (
@@ -144,7 +208,9 @@ export default function RedHotAdmin({ onNavigateStore }) {
           <input className="rha-inp" style={{ marginBottom:20 }} value={loginForm.username} onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))} placeholder="admin" autoComplete="off" />
           <div style={{ fontSize:10, letterSpacing:"0.2em", color:"#555", marginBottom:8 }}>PASSWORD</div>
           <input className="rha-inp" style={{ marginBottom:24 }} type="password" value={loginForm.password} onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
-          <button className="rha-btn-p" type="submit" style={{ width:"100%", padding:14 }}>SIGN IN →</button>
+          <button className="rha-btn-p" type="submit" style={{ width:"100%", padding:14 }} disabled={loginLoading}>
+            {loginLoading ? "SIGNING IN…" : "SIGN IN →"}
+          </button>
         </form>
         {loginError && <p style={{ fontSize:12, color:"#c0392b", textAlign:"center", marginTop:14 }}>{loginError}</p>}
       </div>
@@ -161,16 +227,15 @@ export default function RedHotAdmin({ onNavigateStore }) {
           <span style={{ fontSize:9, letterSpacing:"0.2em", background:"#c0392b", color:"#fff", padding:"2px 8px", borderRadius:2, marginLeft:10, verticalAlign:"middle" }}>ADMIN</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          {onNavigateStore && (
-            <button className="rha-btn-store" onClick={onNavigateStore}>← STORE</button>
-          )}
-          <span style={{ fontSize:11, letterSpacing:"0.15em", color:"#555" }}>Logged in as admin</span>
-          <button className="rha-btn-g" style={{ padding:"7px 16px", fontSize:11 }} onClick={() => setLoggedIn(false)}>LOGOUT</button>
+          {onNavigateStore && <button className="rha-btn-store" onClick={onNavigateStore}>← STORE</button>}
+          <span style={{ fontSize:11, letterSpacing:"0.15em", color:"#555" }}>Logged in as {loginForm.username || "admin"}</span>
+          <button className="rha-btn-g" style={{ padding:"7px 16px", fontSize:11 }} onClick={handleLogout}>LOGOUT</button>
         </div>
       </nav>
 
       <div style={{ maxWidth:1400, margin:"0 auto", padding:"36px 32px" }}>
 
+        {/* STATS */}
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))", gap:16, marginBottom:40 }}>
           {[
             { label:"TOTAL PRODUCTS", value:stats.total },
@@ -186,6 +251,7 @@ export default function RedHotAdmin({ onNavigateStore }) {
           ))}
         </div>
 
+        {/* ADD FORM */}
         <div className="rha-card" style={{ padding:28, marginBottom:36, position:"relative", overflow:"hidden" }}>
           <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:"linear-gradient(90deg,#c0392b,#e74c3c,transparent)" }} />
           <div style={{ fontSize:12, letterSpacing:"0.2em", color:"#c0392b", marginBottom:22, fontWeight:600 }}>+ ADD NEW PRODUCT</div>
@@ -216,11 +282,16 @@ export default function RedHotAdmin({ onNavigateStore }) {
               </div>
               <div style={{ gridColumn:"span 2" }}>
                 <div style={{ fontSize:10, letterSpacing:"0.18em", color:"#555", marginBottom:6 }}>IMAGE URL *</div>
-                <input className="rha-inp" placeholder="https://images.unsplash.com/..." value={form.image} onChange={e => setForm(p => ({ ...p, image: e.target.value }))} />
+                <input className="rha-inp" placeholder="https://images.unsplash.com/…" value={form.image} onChange={e => setForm(p => ({ ...p, image: e.target.value }))} />
+                {form.image && <img src={form.image} alt="preview" className="rha-img-preview" onError={e => e.target.style.display="none"} onLoad={e => e.target.style.display="block"} />}
+              </div>
+              <div style={{ gridColumn:"span 2" }}>
+                <div style={{ fontSize:10, letterSpacing:"0.18em", color:"#555", marginBottom:6 }}>DESCRIPTION</div>
+                <textarea className="rha-inp" rows={2} placeholder="Short product description…" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} style={{ resize:"vertical" }} />
               </div>
               <div style={{ gridColumn:"span 2" }}>
                 <div style={{ fontSize:10, letterSpacing:"0.18em", color:"#555", marginBottom:6 }}>AFFILIATE LINK</div>
-                <input className="rha-inp" placeholder="https://..." value={form.affiliate_link} onChange={e => setForm(p => ({ ...p, affiliate_link: e.target.value }))} />
+                <input className="rha-inp" placeholder="https://…" value={form.affiliate_link} onChange={e => setForm(p => ({ ...p, affiliate_link: e.target.value }))} />
               </div>
             </div>
             {formError && <p style={{ fontSize:12, color:"#c0392b", marginBottom:12 }}>{formError}</p>}
@@ -231,16 +302,29 @@ export default function RedHotAdmin({ onNavigateStore }) {
           </form>
         </div>
 
+        {/* TABLE HEADER */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:12 }}>
           <div>
             <div style={{ fontFamily:"'Playfair Display'", fontSize:24, fontWeight:700 }}>Products</div>
             <div style={{ fontSize:11, letterSpacing:"0.15em", color:"#444", marginTop:4 }}>{filtered.length} OF {products.length} PRODUCTS</div>
           </div>
-          <input className="rha-inp" style={{ width:260 }} placeholder="🔍 Search products…" value={search} onChange={e => setSearch(e.target.value)} />
+          <div style={{ display:"flex", gap:12, alignItems:"center", flexWrap:"wrap" }}>
+            {selected.size > 0 && (
+              <button className="rha-btn-del" onClick={() => setBulkConfirm(true)} style={{ padding:"9px 18px" }}>
+                DELETE {selected.size} SELECTED
+              </button>
+            )}
+            <input className="rha-inp" style={{ width:260 }} placeholder="🔍 Search products…" value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
         </div>
 
         <div className="rha-card" style={{ overflow:"hidden" }}>
           <div className="rha-head">
+            <div>
+              <input type="checkbox" className="rha-checkbox"
+                checked={selected.size === filtered.length && filtered.length > 0}
+                onChange={toggleSelectAll} />
+            </div>
             {["IMG","PRODUCT","CATEGORY","PRICE","BADGE","LINK","ACTIONS"].map(h => (
               <div key={h} style={{ fontSize:9, letterSpacing:"0.2em", color:"#555", fontWeight:600 }}>{h}</div>
             ))}
@@ -252,11 +336,12 @@ export default function RedHotAdmin({ onNavigateStore }) {
                 <div style={{ fontSize:12, letterSpacing:"0.15em" }}>NO PRODUCTS FOUND</div>
               </div>
             ) : filtered.map(p => (
-              <div className="rha-row" key={p.id}>
+              <div className={`rha-row${selected.has(p.id) ? " selected" : ""}`} key={p.id}>
+                <input type="checkbox" className="rha-checkbox" checked={selected.has(p.id)} onChange={() => toggleSelect(p.id)} />
                 <img src={p.image} alt={p.name} style={{ width:44, height:44, objectFit:"cover", borderRadius:4, background:"#1a1a1a" }} />
                 <div>
                   <div style={{ fontFamily:"'Playfair Display'", fontSize:14, fontWeight:700 }}>{p.name}</div>
-                  <div style={{ fontSize:10, letterSpacing:"0.12em", color:"#555", marginTop:2 }}>{p.category}</div>
+                  <div style={{ fontSize:10, letterSpacing:"0.12em", color:"#555", marginTop:2 }}>{p.description ? p.description.slice(0,50)+"…" : p.category}</div>
                 </div>
                 <div style={{ fontSize:12, color:"#555" }}>{p.category}</div>
                 <div style={{ fontSize:14, fontWeight:500, color:"#c0392b" }}>₹{p.price.toLocaleString()}</div>
@@ -276,6 +361,7 @@ export default function RedHotAdmin({ onNavigateStore }) {
         </div>
       </div>
 
+      {/* EDIT MODAL */}
       {editId && (
         <div className="rha-overlay">
           <div className="rha-modal">
@@ -307,6 +393,11 @@ export default function RedHotAdmin({ onNavigateStore }) {
                 <div style={{ gridColumn:"span 2" }}>
                   <div style={{ fontSize:10, letterSpacing:"0.18em", color:"#555", marginBottom:6 }}>IMAGE URL</div>
                   <input className="rha-inp" value={editForm.image} onChange={e => setEditForm(p => ({ ...p, image: e.target.value }))} />
+                  {editForm.image && <img src={editForm.image} alt="preview" className="rha-img-preview" onError={e => e.target.style.display="none"} onLoad={e => e.target.style.display="block"} />}
+                </div>
+                <div style={{ gridColumn:"span 2" }}>
+                  <div style={{ fontSize:10, letterSpacing:"0.18em", color:"#555", marginBottom:6 }}>DESCRIPTION</div>
+                  <textarea className="rha-inp" rows={2} value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} style={{ resize:"vertical" }} />
                 </div>
                 <div style={{ gridColumn:"span 2" }}>
                   <div style={{ fontSize:10, letterSpacing:"0.18em", color:"#555", marginBottom:6 }}>AFFILIATE LINK</div>
@@ -322,6 +413,7 @@ export default function RedHotAdmin({ onNavigateStore }) {
         </div>
       )}
 
+      {/* DELETE CONFIRM */}
       {deleteId && (
         <div className="rha-overlay">
           <div style={{ background:"#111", border:"1px solid #222", borderRadius:8, padding:36, width:380, maxWidth:"95vw", textAlign:"center" }}>
@@ -331,6 +423,21 @@ export default function RedHotAdmin({ onNavigateStore }) {
             <div style={{ display:"flex", gap:12, justifyContent:"center" }}>
               <button className="rha-btn-g" onClick={() => setDeleteId(null)}>CANCEL</button>
               <button className="rha-btn-p" style={{ background:"linear-gradient(135deg,#7a1a1a,#c0392b)" }} onClick={confirmDelete}>DELETE</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BULK DELETE CONFIRM */}
+      {bulkConfirm && (
+        <div className="rha-overlay">
+          <div style={{ background:"#111", border:"1px solid #222", borderRadius:8, padding:36, width:380, maxWidth:"95vw", textAlign:"center" }}>
+            <div style={{ fontSize:32, marginBottom:16 }}>🗑️</div>
+            <div style={{ fontFamily:"'Playfair Display'", fontSize:18, marginBottom:8 }}>Delete {selected.size} products?</div>
+            <div style={{ fontSize:12, color:"#555", marginBottom:28 }}>This cannot be undone.</div>
+            <div style={{ display:"flex", gap:12, justifyContent:"center" }}>
+              <button className="rha-btn-g" onClick={() => setBulkConfirm(false)}>CANCEL</button>
+              <button className="rha-btn-p" style={{ background:"linear-gradient(135deg,#7a1a1a,#c0392b)" }} onClick={handleBulkDelete}>DELETE ALL</button>
             </div>
           </div>
         </div>

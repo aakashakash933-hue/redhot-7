@@ -10,7 +10,7 @@ function useProducts() {
   const [error,    setError]    = useState(false);
   useEffect(() => {
     axios
-      .get(`${API}/products`)
+      .get(`${API}/products`, { timeout: 60000 })
       .then(res => {
         const shuffled = [...res.data].sort(() => Math.random() - 0.5);
         setProducts(shuffled);
@@ -32,8 +32,31 @@ export default function RedHotStore({ onNavigateAdmin }) {
   const [redirecting, setRedirecting] = useState(null);
   const [heroVisible, setHeroVisible] = useState(false);
   const [showAbout,   setShowAbout]   = useState(false);
+  const [detail,      setDetail]      = useState(null); // product detail modal
+  const [detailVisible, setDetailVisible] = useState(false);
 
   useEffect(() => { setTimeout(() => setHeroVisible(true), 80); }, []);
+
+  // close detail on ESC
+  useEffect(() => {
+    const fn = (e) => { if (e.key === "Escape") closeDetail(); };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, []);
+
+  const openDetail = (product) => {
+    setDetail(product);
+    setTimeout(() => setDetailVisible(true), 10);
+    document.body.style.overflow = "hidden";
+  };
+
+  const closeDetail = () => {
+    setDetailVisible(false);
+    setTimeout(() => {
+      setDetail(null);
+      document.body.style.overflow = "";
+    }, 350);
+  };
 
   const filtered = products
     .filter(p => {
@@ -50,11 +73,11 @@ export default function RedHotStore({ onNavigateAdmin }) {
       return 0;
     });
 
-  const handleBuy = (product) => {
+  const handleBuy = (product, e) => {
+    if (e) e.stopPropagation();
     setRedirecting(product.id);
     setTimeout(() => {
       setRedirecting(null);
-      // Masked route — hides real affiliate link from DevTools
       window.open(`${API}/go/${product.id}`, "_blank");
     }, 1100);
   };
@@ -92,10 +115,11 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-pill:hover { border-color:var(--red); color:var(--red); background:var(--red-dim); }
         .rh-pill.active { background:var(--red); border-color:var(--red); color:var(--white); }
 
-        .rh-card { background:var(--white); border:1px solid var(--warm); border-radius:6px; overflow:hidden; transition:box-shadow 0.35s ease; height:100%; }
-        .rh-card:hover { box-shadow:0 20px 40px rgba(200,30,30,0.10); }
+        .rh-card { background:var(--white); border:1px solid var(--warm); border-radius:6px; overflow:hidden; transition:box-shadow 0.35s ease, transform 0.25s ease; height:100%; cursor:pointer; }
+        .rh-card:hover { box-shadow:0 20px 40px rgba(200,30,30,0.10); transform:translateY(-2px); }
         .rh-card-img-wrap { border-radius:6px 6px 0 0; overflow:hidden; position:relative; }
-        .rh-card-img { width:100%; height:260px; object-fit:cover; display:block; background:var(--warm); }
+        .rh-card-img { width:100%; height:260px; object-fit:cover; display:block; background:var(--warm); transition:transform 0.5s ease; }
+        .rh-card:hover .rh-card-img { transform:scale(1.04); }
         .rh-badge-hot { position:absolute; top:12px; left:12px; background:var(--red); color:var(--white); font-family:'DM Sans',sans-serif; font-size:9px; font-weight:600; letter-spacing:0.2em; padding:3px 10px; border-radius:2px; text-transform:uppercase; }
         .rh-badge-new { position:absolute; top:12px; left:12px; background:var(--sand); color:var(--umber); font-family:'DM Sans',sans-serif; font-size:9px; font-weight:600; letter-spacing:0.2em; padding:3px 10px; border-radius:2px; text-transform:uppercase; }
         .rh-card-body { padding:18px 16px 16px; background:var(--white); }
@@ -136,6 +160,57 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-about-modal { background:var(--white); border-radius:8px; padding:48px 44px; width:480px; max-width:95vw; position:relative; border-top:3px solid var(--red); }
         .rh-about-close { position:absolute; top:16px; right:18px; background:none; border:none; font-size:20px; color:var(--taupe); cursor:pointer; line-height:1; }
         .rh-about-close:hover { color:var(--red); }
+
+        /* ── DETAIL MODAL ── */
+        .rh-detail-backdrop {
+          position:fixed; inset:0; z-index:10000;
+          background:rgba(44,44,44,0.55);
+          backdrop-filter:blur(6px);
+          display:flex; align-items:flex-end; justify-content:center;
+          opacity:0; transition:opacity 0.35s ease;
+        }
+        .rh-detail-backdrop.visible { opacity:1; }
+        .rh-detail-sheet {
+          background:var(--white);
+          border-radius:20px 20px 0 0;
+          width:100%; max-width:720px;
+          max-height:92vh;
+          overflow-y:auto;
+          transform:translateY(100%);
+          transition:transform 0.38s cubic-bezier(0.22,1,0.36,1);
+          position:relative;
+        }
+        .rh-detail-backdrop.visible .rh-detail-sheet { transform:translateY(0); }
+        .rh-detail-drag { width:40px; height:4px; background:var(--sand); border-radius:2px; margin:14px auto 0; }
+        .rh-detail-close {
+          position:absolute; top:16px; right:20px;
+          background:var(--warm); border:none; border-radius:50%;
+          width:32px; height:32px; cursor:pointer;
+          font-size:16px; color:var(--taupe);
+          display:flex; align-items:center; justify-content:center;
+          transition:all 0.2s;
+        }
+        .rh-detail-close:hover { background:var(--red); color:var(--white); }
+        .rh-detail-img { width:100%; height:clamp(260px,45vw,420px); object-fit:cover; display:block; }
+        .rh-detail-body { padding:28px 28px 48px; }
+        .rh-detail-cat { font-family:'DM Sans',sans-serif; font-size:9px; letter-spacing:0.3em; color:var(--taupe); text-transform:uppercase; margin-bottom:10px; }
+        .rh-detail-name { font-family:'Cormorant Garamond',serif; font-size:clamp(1.8rem,5vw,2.6rem); font-weight:700; color:var(--charcoal); line-height:1.1; margin-bottom:16px; }
+        .rh-detail-desc { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--taupe); line-height:1.85; margin-bottom:24px; }
+        .rh-detail-price { font-family:'DM Sans',sans-serif; font-size:1.6rem; font-weight:700; color:var(--red); margin-bottom:24px; }
+        .rh-detail-divider { height:1px; background:var(--warm); margin-bottom:24px; }
+        .rh-detail-buy {
+          font-family:'DM Sans',sans-serif; font-size:11px; font-weight:600;
+          letter-spacing:0.22em; text-transform:uppercase;
+          background:var(--red); color:var(--white);
+          border:none; padding:14px 36px; border-radius:3px;
+          cursor:pointer; transition:all 0.2s; width:100%;
+        }
+        .rh-detail-buy:hover { background:#a01515; box-shadow:0 8px 24px rgba(200,30,30,0.3); }
+        .rh-detail-meta { display:flex; gap:24px; flex-wrap:wrap; margin-bottom:24px; }
+        .rh-detail-meta-item { font-family:'DM Sans',sans-serif; font-size:11px; }
+        .rh-detail-meta-label { color:var(--taupe); letter-spacing:0.15em; text-transform:uppercase; font-size:9px; margin-bottom:4px; }
+        .rh-detail-meta-value { color:var(--charcoal); font-weight:500; }
+
         .rh-footer { background:var(--charcoal); color:var(--taupe); text-align:center; padding:2rem; font-family:'DM Sans',sans-serif; font-size:11px; letter-spacing:0.16em; width:100%; }
       `}</style>
 
@@ -155,6 +230,55 @@ export default function RedHotStore({ onNavigateAdmin }) {
             <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#9e8f7e", lineHeight:1.8, marginBottom:16 }}>Redhot is a curated affiliate store bringing you the finest picks across fashion, accessories, and electronics.</p>
             <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#9e8f7e", lineHeight:1.8, marginBottom:16 }}>Every product is hand-selected for style. When you click Link, you're redirected to the platform where you can complete your purchase.</p>
             <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#d4c9b8", lineHeight:1.8 }}>© 2025 Redhot — Curated with care.</p>
+          </div>
+        </div>
+      )}
+
+      {/* DETAIL MODAL */}
+      {detail && (
+        <div className={`rh-detail-backdrop${detailVisible ? " visible" : ""}`} onClick={closeDetail}>
+          <div className="rh-detail-sheet" onClick={e => e.stopPropagation()}>
+            <div className="rh-detail-drag" />
+            <button className="rh-detail-close" onClick={closeDetail}>✕</button>
+
+            <img
+              src={detail.image || "https://placehold.co/720x420?text=No+Image"}
+              alt={detail.name}
+              className="rh-detail-img"
+              onError={e => { e.target.src = "https://placehold.co/720x420?text=No+Image"; }}
+            />
+
+            <div className="rh-detail-body">
+              <div className="rh-detail-cat">{detail.category}</div>
+              <h2 className="rh-detail-name">{detail.name}</h2>
+
+              <div className="rh-detail-meta">
+                <div className="rh-detail-meta-item">
+                  <div className="rh-detail-meta-label">Category</div>
+                  <div className="rh-detail-meta-value">{detail.category || "—"}</div>
+                </div>
+                {detail.badge && (
+                  <div className="rh-detail-meta-item">
+                    <div className="rh-detail-meta-label">Badge</div>
+                    <div className="rh-detail-meta-value" style={{ color: detail.badge === "HOT" ? "#c81e1e" : "#5c4f3d" }}>
+                      {detail.badge === "HOT" ? "🔥 Hot Pick" : "✦ New Arrival"}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="rh-detail-divider" />
+
+              {detail.description && (
+                <p className="rh-detail-desc">{detail.description}</p>
+              )}
+
+              <div className="rh-detail-price">₹{(detail.price || 0).toLocaleString()}</div>
+
+              <button className="rh-detail-buy" onClick={(e) => { handleBuy(detail, e); closeDetail(); }}>
+                Shop Now — ₹{(detail.price || 0).toLocaleString()}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -228,7 +352,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
           <div className="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3">
             {filtered.map(product => (
               <div className="col" key={product.id}>
-                <div className="rh-card">
+                <div className="rh-card" onClick={() => openDetail(product)}>
                   <div className="rh-card-img-wrap">
                     <img src={product.image || "https://placehold.co/300x300?text=No+Image"} alt={product.name} className="rh-card-img" onError={e => { e.target.src = "https://placehold.co/300x300?text=No+Image"; }} />
                     {product.badge && (
@@ -241,7 +365,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
                     {product.description && <p className="rh-prod-desc">{product.description}</p>}
                     <div className="d-flex align-items-center justify-content-between">
                       <span className="rh-price">₹{(product.price || 0).toLocaleString()}</span>
-                      <button className="rh-buy-btn" onClick={() => handleBuy(product)}>Link</button>
+                      <button className="rh-buy-btn" onClick={(e) => handleBuy(product, e)}>Link</button>
                     </div>
                   </div>
                 </div>
