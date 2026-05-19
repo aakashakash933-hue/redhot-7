@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://redhot-7.vercel.app/sitemap.xml
+Sitemap: https://YOUR_DOMAIN.com/sitemap.xml

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import RedHotStore from "./RedHotStore";
 import RedHotIntro from "./RedHotIntro";
 
@@ -71,6 +71,7 @@ const TRANSITION_CSS = `
     padding: 10px 20px;
     background: rgba(247,245,242,0.92);
     backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid #d4c9b8;
     border-radius: 40px;
     cursor: pointer;
@@ -120,7 +121,7 @@ function usePager(initial) {
   const EXIT_MS  = 380;
   const ENTER_MS = 600;
 
-  const navigate = (next, back = false) => {
+  const navigate = useCallback((next, back = false) => {
     if (next === current || busy.current) return;
     busy.current = true;
     pending.current = next;
@@ -143,12 +144,12 @@ function usePager(initial) {
     } else {
       history.current = [...history.current, next];
     }
-  };
+  }, [current]);
 
-  const goBack = () => {
+  const goBack = useCallback(() => {
     if (history.current.length <= 1) return;
     navigate(history.current[history.current.length - 2], true);
-  };
+  }, [navigate]);
 
   const canGoBack = history.current.length > 1;
   return { current, previous, phase, isBack, navigate, goBack, canGoBack };
@@ -175,6 +176,7 @@ export default function App() {
   const { current, previous, phase, isBack, navigate, goBack, canGoBack } =
     usePager(PAGES.INTRO);
 
+  // Stable ESC key handler — goBack is memoized via useCallback
   useEffect(() => {
     const fn = (e) => { if (e.key === "Escape" && canGoBack) goBack(); };
     window.addEventListener("keydown", fn);
@@ -222,7 +224,7 @@ export default function App() {
         onClick={goBack}
         aria-label="Go back"
       >
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
           <path d="M8.5 2L3.5 6.5L8.5 11"
             stroke="#c81e1e" strokeWidth="1.8"
             strokeLinecap="round" strokeLinejoin="round" />

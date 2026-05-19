@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import 'bootstrap/dist/css/bootstrap.min.css';
 
@@ -37,26 +37,20 @@ export default function RedHotStore({ onNavigateAdmin }) {
 
   useEffect(() => { setTimeout(() => setHeroVisible(true), 80); }, []);
 
-  // close detail on ESC
-  useEffect(() => {
-    const fn = (e) => { if (e.key === "Escape") closeDetail(); };
-    window.addEventListener("keydown", fn);
-    return () => window.removeEventListener("keydown", fn);
-  }, []);
-
-  const openDetail = (product) => {
-    setDetail(product);
-    setTimeout(() => setDetailVisible(true), 10);
-    document.body.style.overflow = "hidden";
-  };
-
-  const closeDetail = () => {
+  const closeDetail = useCallback(() => {
     setDetailVisible(false);
     setTimeout(() => {
       setDetail(null);
       document.body.style.overflow = "";
     }, 350);
-  };
+  }, []);
+
+  // close detail on ESC
+  useEffect(() => {
+    const fn = (e) => { if (e.key === "Escape") closeDetail(); };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [closeDetail]);
 
   const filtered = products
     .filter(p => {
