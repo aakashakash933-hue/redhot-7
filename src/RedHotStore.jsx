@@ -369,7 +369,10 @@ export default function RedHotStore({ onNavigateAdmin }) {
         )}
       </div>
 
-      <div className="rh-footer">© 2025 REDHOT — All rights reserved</div>
+      <div className="rh-footer">
+        © 2025 REDHOT — All rights reserved
+        <span style={{ cursor: "pointer", marginLeft: "10px", color: "var(--charcoal)" }} onClick={onNavigateAdmin}>[Admin]</span>
+      </div>
     </div>
   );
 }
