@@ -21,7 +21,7 @@ function useProducts() {
   return { products, loading, error };
 }
 
-const CATEGORIES = ["All", "Men's Topwear", "Men's Bottomwear", "Women's Topwear", "Women's Bottomwear", "Accessories", "Electronics"];
+const CATEGORIES = ["All", "Men's Topwear", "Men's Bottomwear", "Women's Topwear", "Women's Bottomwear", "Accessories"];
 
 export default function RedHotStore({ onNavigateAdmin }) {
   const { products, loading, error } = useProducts();
@@ -105,12 +105,11 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-search.form-control:focus { border-color:var(--red); background:var(--white); }
         .rh-select.form-select { font-family:'DM Sans',sans-serif; font-size:12px; letter-spacing:0.06em; background:var(--cream); border:1px solid var(--sand); border-radius:4px; color:var(--charcoal); padding:0.55rem 2rem 0.55rem 1rem; box-shadow:none !important; cursor:pointer; }
         .rh-select.form-select:focus { border-color:var(--red); }
-        .rh-pill { font-family:'DM Sans',sans-serif; font-size:10px; letter-spacing:0.15em; font-weight:500; padding:8px 16px; border-radius:4px; border:1px solid var(--sand); background:transparent; color:var(--taupe); cursor:pointer; transition:all 0.2s; text-transform:uppercase; white-space:nowrap; flex-shrink:0; }
+        .rh-pill { font-family:'DM Sans',sans-serif; font-size:10px; letter-spacing:0.12em; font-weight:500; padding:8px 12px; border-radius:4px; border:1px solid var(--sand); background:transparent; color:var(--taupe); cursor:pointer; transition:all 0.2s; text-transform:uppercase; text-align:center; flex-grow:1; }
         .rh-pill:hover { border-color:var(--red); color:var(--red); background:var(--red-dim); }
         .rh-pill.active { background:var(--charcoal); border-color:var(--charcoal); color:var(--white); }
 
-        .rh-category-scroll { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; scrollbar-width:none; -webkit-overflow-scrolling:touch; margin-top:10px; }
-        .rh-category-scroll::-webkit-scrollbar { display:none; }
+        .rh-category-scroll { display:flex; flex-wrap:wrap; gap:8px; padding-bottom:8px; margin-top:10px; }
 
         .rh-card { background:var(--white); border:1px solid var(--warm); border-radius:4px; overflow:hidden; transition:box-shadow 0.35s ease, transform 0.25s ease; height:100%; cursor:pointer; }
         .rh-card:hover { box-shadow:0 12px 24px rgba(0,0,0,0.06); transform:translateY(-2px); }

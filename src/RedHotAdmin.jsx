@@ -21,7 +21,7 @@ function useProducts(token) {
   return { products, refresh: fetchProducts };
 }
 
-const CATEGORIES = ["Men's Topwear", "Men's Bottomwear", "Women's Topwear", "Women's Bottomwear", "Accessories", "Electronics"];
+const CATEGORIES = ["Men's Topwear", "Men's Bottomwear", "Women's Topwear", "Women's Bottomwear", "Accessories"];
 const emptyForm = { name: "", price: "", category: "", badge: "", image: "", affiliate_link: "", description: "" };
 
 export default function RedHotAdmin({ onNavigateStore }) {
