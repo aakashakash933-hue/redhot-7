@@ -105,27 +105,30 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-search.form-control:focus { border-color:var(--red); background:var(--white); }
         .rh-select.form-select { font-family:'DM Sans',sans-serif; font-size:12px; letter-spacing:0.06em; background:var(--cream); border:1px solid var(--sand); border-radius:4px; color:var(--charcoal); padding:0.55rem 2rem 0.55rem 1rem; box-shadow:none !important; cursor:pointer; }
         .rh-select.form-select:focus { border-color:var(--red); }
-        .rh-pill { font-family:'DM Sans',sans-serif; font-size:10px; letter-spacing:0.2em; font-weight:500; padding:6px 18px; border-radius:2px; border:1px solid var(--sand); background:transparent; color:var(--taupe); cursor:pointer; transition:all 0.2s; text-transform:uppercase; }
+        .rh-pill { font-family:'DM Sans',sans-serif; font-size:10px; letter-spacing:0.15em; font-weight:500; padding:8px 16px; border-radius:4px; border:1px solid var(--sand); background:transparent; color:var(--taupe); cursor:pointer; transition:all 0.2s; text-transform:uppercase; white-space:nowrap; flex-shrink:0; }
         .rh-pill:hover { border-color:var(--red); color:var(--red); background:var(--red-dim); }
-        .rh-pill.active { background:var(--red); border-color:var(--red); color:var(--white); }
+        .rh-pill.active { background:var(--charcoal); border-color:var(--charcoal); color:var(--white); }
 
-        .rh-card { background:var(--white); border:1px solid var(--warm); border-radius:6px; overflow:hidden; transition:box-shadow 0.35s ease, transform 0.25s ease; height:100%; cursor:pointer; }
-        .rh-card:hover { box-shadow:0 20px 40px rgba(200,30,30,0.10); transform:translateY(-2px); }
-        .rh-card-img-wrap { border-radius:6px 6px 0 0; overflow:hidden; position:relative; }
-        .rh-card-img { width:100%; height:260px; object-fit:cover; display:block; background:var(--warm); transition:transform 0.5s ease; }
+        .rh-category-scroll { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; scrollbar-width:none; -webkit-overflow-scrolling:touch; margin-top:10px; }
+        .rh-category-scroll::-webkit-scrollbar { display:none; }
+
+        .rh-card { background:var(--white); border:1px solid var(--warm); border-radius:4px; overflow:hidden; transition:box-shadow 0.35s ease, transform 0.25s ease; height:100%; cursor:pointer; }
+        .rh-card:hover { box-shadow:0 12px 24px rgba(0,0,0,0.06); transform:translateY(-2px); }
+        .rh-card-img-wrap { border-radius:4px 4px 0 0; overflow:hidden; position:relative; }
+        .rh-card-img { width:100%; aspect-ratio:3/4; object-fit:cover; display:block; background:var(--warm); transition:transform 0.5s ease; }
         .rh-card:hover .rh-card-img { transform:scale(1.04); }
-        .rh-badge-hot { position:absolute; top:12px; left:12px; background:var(--red); color:var(--white); font-family:'DM Sans',sans-serif; font-size:9px; font-weight:600; letter-spacing:0.2em; padding:3px 10px; border-radius:2px; text-transform:uppercase; }
-        .rh-badge-new { position:absolute; top:12px; left:12px; background:var(--sand); color:var(--umber); font-family:'DM Sans',sans-serif; font-size:9px; font-weight:600; letter-spacing:0.2em; padding:3px 10px; border-radius:2px; text-transform:uppercase; }
-        .rh-card-body { padding:18px 16px 16px; background:var(--white); }
-        .rh-cat-label { font-family:'DM Sans',sans-serif; font-size:9px; letter-spacing:0.22em; color:var(--taupe); text-transform:uppercase; margin-bottom:5px; }
-        .rh-prod-name { font-family:'Cormorant Garamond',serif; font-size:1.1rem; font-weight:600; color:var(--charcoal); line-height:1.3; margin-bottom:6px; }
-        .rh-prod-desc { font-family:'DM Sans',sans-serif; font-size:11px; color:var(--taupe); line-height:1.6; margin-bottom:12px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-        .rh-price { font-family:'DM Sans',sans-serif; font-size:1.05rem; font-weight:600; color:var(--red); }
-        .rh-buy-btn { font-family:'DM Sans',sans-serif; font-size:10px; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; background:var(--red); color:var(--white); border:none; padding:8px 18px; border-radius:3px; cursor:pointer; transition:all 0.2s; }
-        .rh-buy-btn:hover { background:#a01515; transform:translateY(-1px); box-shadow:0 6px 16px rgba(200,30,30,0.3); }
+        .rh-badge-hot { position:absolute; top:10px; left:10px; background:var(--white); color:var(--red); font-family:'DM Sans',sans-serif; font-size:9px; font-weight:700; letter-spacing:0.1em; padding:4px 8px; border-radius:2px; text-transform:uppercase; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+        .rh-badge-new { position:absolute; top:10px; left:10px; background:var(--white); color:var(--charcoal); font-family:'DM Sans',sans-serif; font-size:9px; font-weight:700; letter-spacing:0.1em; padding:4px 8px; border-radius:2px; text-transform:uppercase; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+        .rh-card-body { padding:12px; background:var(--white); }
+        .rh-cat-label { font-family:'DM Sans',sans-serif; font-size:9px; letter-spacing:0.1em; color:var(--taupe); text-transform:uppercase; margin-bottom:4px; }
+        .rh-prod-name { font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; color:var(--charcoal); line-height:1.3; margin-bottom:4px; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
+        .rh-prod-desc { display:none; }
+        .rh-price { font-family:'DM Sans',sans-serif; font-size:14px; font-weight:700; color:var(--charcoal); }
+        .rh-buy-btn { font-family:'DM Sans',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; background:transparent; color:var(--red); border:none; padding:4px 0; cursor:pointer; transition:all 0.2s; }
+        .rh-buy-btn:hover { color:#a01515; }
 
         .rh-count { font-family:'DM Sans',sans-serif; font-size:10px; letter-spacing:0.2em; color:var(--sand); text-transform:uppercase; padding:1.2rem 2rem 0; width:100%; }
-        .rh-grid-wrap { width:100%; padding:1.5rem 1rem 5rem; position:relative; z-index:0; isolation:isolate; overflow:hidden; }
+        .rh-grid-wrap { width:100%; padding:1rem 1.5rem 5rem; position:relative; z-index:0; isolation:isolate; overflow:hidden; }
 
         .rh-empty { text-align:center; padding:100px 0; color:var(--sand); width:100%; }
         .rh-empty-icon { font-size:3rem; margin-bottom:1rem; }
@@ -137,13 +140,13 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-retry-btn { font-family:'DM Sans',sans-serif; font-size:10px; letter-spacing:0.2em; text-transform:uppercase; background:transparent; border:1px solid var(--red); color:var(--red); padding:8px 24px; border-radius:3px; cursor:pointer; transition:all 0.2s; }
         .rh-retry-btn:hover { background:var(--red); color:var(--white); }
 
-        .rh-skeleton { background:var(--white); border:1px solid var(--warm); border-radius:6px; overflow:hidden; height:100%; }
-        .rh-skeleton-img { width:100%; height:260px; background:linear-gradient(90deg,var(--warm) 25%,var(--cream) 50%,var(--warm) 75%); background-size:200% 100%; animation:rh-shimmer 1.4s infinite; }
-        .rh-skeleton-body { padding:18px 16px 16px; }
-        .rh-skeleton-line { height:10px; border-radius:4px; margin-bottom:10px; background:linear-gradient(90deg,var(--warm) 25%,var(--cream) 50%,var(--warm) 75%); background-size:200% 100%; animation:rh-shimmer 1.4s infinite; }
+        .rh-skeleton { background:var(--white); border:1px solid var(--warm); border-radius:4px; overflow:hidden; height:100%; }
+        .rh-skeleton-img { width:100%; aspect-ratio:3/4; background:linear-gradient(90deg,var(--warm) 25%,var(--cream) 50%,var(--warm) 75%); background-size:200% 100%; animation:rh-shimmer 1.4s infinite; }
+        .rh-skeleton-body { padding:12px; }
+        .rh-skeleton-line { height:10px; border-radius:4px; margin-bottom:8px; background:linear-gradient(90deg,var(--warm) 25%,var(--cream) 50%,var(--warm) 75%); background-size:200% 100%; animation:rh-shimmer 1.4s infinite; }
         @keyframes rh-shimmer { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
 
-        @media (max-width:576px) { .rh-select.form-select{width:100% !important;} .rh-filters{padding:1rem;} .rh-count{padding:1rem 1rem 0;} }
+        @media (max-width:576px) { .rh-select.form-select{width:100% !important;} .rh-filters{padding:1rem;} .rh-count{padding:1rem 1rem 0;} .rh-grid-wrap{padding:1rem 0.5rem 5rem;} }
 
         .rh-overlay { position:fixed; inset:0; background:rgba(247,245,242,0.92); backdrop-filter:blur(6px); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; }
         .rh-spinner { width:32px; height:32px; border:2px solid var(--sand); border-top-color:var(--red); border-radius:50%; animation:rh-spin 0.8s linear infinite; }
@@ -302,7 +305,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
             <option value="name">Name A–Z</option>
           </select>
         </div>
-        <div className="d-flex gap-2 flex-wrap">
+        <div className="rh-category-scroll">
           {CATEGORIES.map(cat => (
             <button key={cat} className={`rh-pill ${category === cat ? "active" : ""}`} onClick={() => setCategory(cat)}>{cat}</button>
           ))}
@@ -315,7 +318,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
 
       <div className="rh-grid-wrap">
         {loading ? (
-          <div className="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3">
+          <div className="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-2">
             {[...Array(6)].map((_, i) => (
               <div className="col" key={i}>
                 <div className="rh-skeleton">
@@ -343,12 +346,12 @@ export default function RedHotStore({ onNavigateAdmin }) {
             </div>
           </div>
         ) : (
-          <div className="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3">
+          <div className="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-2">
             {filtered.map(product => (
               <div className="col" key={product.id}>
                 <div className="rh-card" onClick={() => openDetail(product)}>
                   <div className="rh-card-img-wrap">
-                    <img src={product.image || "https://placehold.co/300x300?text=No+Image"} alt={product.name} className="rh-card-img" onError={e => { e.target.src = "https://placehold.co/300x300?text=No+Image"; }} />
+                    <img src={product.image || "https://placehold.co/300x400?text=No+Image"} alt={product.name} className="rh-card-img" onError={e => { e.target.src = "https://placehold.co/300x400?text=No+Image"; }} />
                     {product.badge && (
                       <span className={product.badge === "HOT" ? "rh-badge-hot" : "rh-badge-new"}>{product.badge}</span>
                     )}
@@ -356,7 +359,6 @@ export default function RedHotStore({ onNavigateAdmin }) {
                   <div className="rh-card-body">
                     <div className="rh-cat-label">{(product.category || "").toUpperCase()}</div>
                     <h3 className="rh-prod-name">{product.name}</h3>
-                    {product.description && <p className="rh-prod-desc">{product.description}</p>}
                     <div className="d-flex align-items-center justify-content-between">
                       <span className="rh-price">₹{(product.price || 0).toLocaleString()}</span>
                       <button className="rh-buy-btn" onClick={(e) => handleBuy(product, e)}>Link</button>
@@ -370,8 +372,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
       </div>
 
       <div className="rh-footer">
-        © 2025 REDHOT — All rights reserved
-        <span style={{ cursor: "pointer", marginLeft: "10px", color: "var(--red)", fontWeight: "bold" }} onClick={onNavigateAdmin}>[ADMIN]</span>
+        © 2025 REDHOT — <span style={{ cursor: "pointer" }} onClick={onNavigateAdmin}>All rights reserved</span>
       </div>
     </div>
   );
