@@ -21,7 +21,7 @@ function useProducts() {
   return { products, loading, error };
 }
 
-const CATEGORIES = ["All", "Men", "Women", "Accessories", "Electronics"];
+const CATEGORIES = ["All", "Men's Topwear", "Men's Bottomwear", "Women's Topwear", "Women's Bottomwear", "Accessories", "Electronics"];
 
 export default function RedHotStore({ onNavigateAdmin }) {
   const { products, loading, error } = useProducts();
