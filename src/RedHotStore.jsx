@@ -32,6 +32,8 @@ export default function RedHotStore({ onNavigateAdmin }) {
   const [redirecting, setRedirecting] = useState(null);
   const [heroVisible, setHeroVisible] = useState(false);
   const [showAbout,   setShowAbout]   = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showContact, setShowContact] = useState(false);
   const [detail,      setDetail]      = useState(null); // product detail modal
   const [detailVisible, setDetailVisible] = useState(false);
 
@@ -92,9 +94,9 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-about-btn { font-family:'DM Sans',sans-serif; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; background:transparent; border:1px solid var(--sand); color:var(--taupe); padding:7px 18px; border-radius:3px; cursor:pointer; transition:all 0.2s; }
         .rh-about-btn:hover { border-color:var(--red); color:var(--red); background:var(--red-dim); }
 
-        .rh-hero { background:linear-gradient(160deg,var(--warm) 0%,var(--cream) 60%); border-bottom:1px solid var(--sand); padding:80px 2rem 60px; text-align:center; width:100%; }
+        .rh-hero { background:linear-gradient(160deg,var(--warm) 0%,var(--cream) 60%); border-bottom:1px solid var(--sand); padding:50px 2rem 35px; text-align:center; width:100%; }
         .rh-hero-eyebrow { font-family:'DM Sans',sans-serif; font-size:10px; letter-spacing:0.38em; color:var(--taupe); font-weight:500; margin-bottom:1.1rem; text-transform:uppercase; }
-        .rh-hero-title { font-family:'Cormorant Garamond',serif; font-size:clamp(2.6rem,6vw,5rem); font-weight:700; line-height:1.08; color:var(--charcoal); margin-bottom:1rem; }
+        .rh-hero-title { font-family:'Cormorant Garamond',serif; font-size:clamp(2rem,4vw,3.5rem); font-weight:700; line-height:1.08; color:var(--charcoal); margin-bottom:1rem; }
         .rh-hero-title span { color:var(--red); font-style:italic; }
         .rh-hero-sub { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--taupe); letter-spacing:0.1em; max-width:380px; margin:0 auto; }
         .hero-fade { opacity:0; transform:translateY(24px); transition:opacity .9s ease,transform .9s ease; }
@@ -145,7 +147,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-skeleton-line { height:10px; border-radius:4px; margin-bottom:8px; background:linear-gradient(90deg,var(--warm) 25%,var(--cream) 50%,var(--warm) 75%); background-size:200% 100%; animation:rh-shimmer 1.4s infinite; }
         @keyframes rh-shimmer { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
 
-        @media (max-width:576px) { .rh-select.form-select{width:100% !important;} .rh-filters{padding:1rem;} .rh-count{padding:1rem 1rem 0;} .rh-grid-wrap{padding:1rem 0.5rem 5rem;} }
+        @media (max-width:576px) { .rh-hero{padding:30px 1rem 20px;} .rh-select.form-select{width:100% !important;} .rh-filters{padding:0.75rem;} .rh-count{padding:0.75rem 0.75rem 0;} .rh-grid-wrap{padding:0.75rem 0.5rem 5rem;} }
 
         .rh-overlay { position:fixed; inset:0; background:rgba(247,245,242,0.92); backdrop-filter:blur(6px); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; }
         .rh-spinner { width:32px; height:32px; border:2px solid var(--sand); border-top-color:var(--red); border-radius:50%; animation:rh-spin 0.8s linear infinite; }
@@ -230,6 +232,30 @@ export default function RedHotStore({ onNavigateAdmin }) {
         </div>
       )}
 
+      {showPrivacy && (
+        <div className="rh-about-overlay" onClick={() => setShowPrivacy(false)}>
+          <div className="rh-about-modal" onClick={e => e.stopPropagation()}>
+            <button className="rh-about-close" onClick={() => setShowPrivacy(false)}>✕</button>
+            <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:"2rem", fontWeight:700, color:"#c81e1e", marginBottom:8 }}>Privacy Policy</div>
+            <div style={{ width:40, height:2, background:"#c81e1e", marginBottom:20 }} />
+            <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#9e8f7e", lineHeight:1.8, marginBottom:16 }}>We value your privacy. Redhot does not collect personal data beyond basic analytics to improve your experience.</p>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#9e8f7e", lineHeight:1.8, marginBottom:16 }}>When you click on a product link, you are redirected to third-party affiliate partners where their respective privacy policies apply.</p>
+          </div>
+        </div>
+      )}
+
+      {showContact && (
+        <div className="rh-about-overlay" onClick={() => setShowContact(false)}>
+          <div className="rh-about-modal" onClick={e => e.stopPropagation()}>
+            <button className="rh-about-close" onClick={() => setShowContact(false)}>✕</button>
+            <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:"2rem", fontWeight:700, color:"#c81e1e", marginBottom:8 }}>Contact Us</div>
+            <div style={{ width:40, height:2, background:"#c81e1e", marginBottom:20 }} />
+            <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#9e8f7e", lineHeight:1.8, marginBottom:16 }}>Have a question or feedback? We'd love to hear from you.</p>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#9e8f7e", lineHeight:1.8, marginBottom:16 }}>Email us at: <a href="mailto:redhotseven.in@gmail.com" style={{ color:"#c81e1e", textDecoration:"none", fontWeight:600 }}>redhotseven.in@gmail.com</a></p>
+          </div>
+        </div>
+      )}
+
       {/* DETAIL MODAL */}
       {detail && (
         <div className={`rh-detail-backdrop${detailVisible ? " visible" : ""}`} onClick={closeDetail}>
@@ -289,7 +315,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
       <div className="rh-hero">
         <div className={`hero-fade ${heroVisible ? "in" : ""}`}>
           <div className="rh-hero-eyebrow">New Arrivals</div>
-          <h1 className="rh-hero-title">Discover What's<br /><span>Curated & Coveted</span></h1>
+          <h1 className="rh-hero-title"><span>Curated & Coveted</span></h1>
           <p className="rh-hero-sub">Refined drops. Every piece worth wearing.</p>
         </div>
       </div>
@@ -297,17 +323,17 @@ export default function RedHotStore({ onNavigateAdmin }) {
       <div className="rh-filters">
         <div className="d-flex gap-2 flex-wrap mb-3">
           <input className="rh-search form-control flex-grow-1" style={{ minWidth:200 }} placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)} />
+          <select className="rh-select form-select" style={{ width:"auto" }} value={category} onChange={e => setCategory(e.target.value)}>
+            {CATEGORIES.map(cat => (
+              <option key={cat} value={cat}>{cat === "All" ? "Filter: All Categories" : cat}</option>
+            ))}
+          </select>
           <select className="rh-select form-select" style={{ width:"auto" }} value={sort} onChange={e => setSort(e.target.value)}>
             <option value="default">Sort: Default</option>
             <option value="price_asc">Price: Low → High</option>
             <option value="price_desc">Price: High → Low</option>
             <option value="name">Name A–Z</option>
           </select>
-        </div>
-        <div className="rh-category-scroll">
-          {CATEGORIES.map(cat => (
-            <button key={cat} className={`rh-pill ${category === cat ? "active" : ""}`} onClick={() => setCategory(cat)}>{cat}</button>
-          ))}
         </div>
       </div>
 
@@ -371,6 +397,11 @@ export default function RedHotStore({ onNavigateAdmin }) {
       </div>
 
       <div className="rh-footer">
+        <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "center", gap: "20px" }}>
+          <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setShowAbout(true)}>About Us</span>
+          <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setShowContact(true)}>Contact Us</span>
+          <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setShowPrivacy(true)}>Privacy Policy</span>
+        </div>
         © 2025 REDHOT — <span style={{ cursor: "pointer" }} onClick={onNavigateAdmin}>All rights reserved</span>
       </div>
     </div>
