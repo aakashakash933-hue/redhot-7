@@ -321,19 +321,21 @@ export default function RedHotStore({ onNavigateAdmin }) {
       </div>
 
       <div className="rh-filters">
-        <div className="d-flex gap-2 flex-wrap mb-3">
-          <input className="rh-search form-control flex-grow-1" style={{ minWidth:200 }} placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)} />
-          <select className="rh-select form-select" style={{ width:"auto" }} value={category} onChange={e => setCategory(e.target.value)}>
-            {CATEGORIES.map(cat => (
-              <option key={cat} value={cat}>{cat === "All" ? "Filter: All Categories" : cat}</option>
-            ))}
-          </select>
-          <select className="rh-select form-select" style={{ width:"auto" }} value={sort} onChange={e => setSort(e.target.value)}>
-            <option value="default">Sort: Default</option>
-            <option value="price_asc">Price: Low → High</option>
-            <option value="price_desc">Price: High → Low</option>
-            <option value="name">Name A–Z</option>
-          </select>
+        <div className="d-flex flex-column gap-2 mb-3">
+          <input className="rh-search form-control w-100" placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)} />
+          <div className="d-flex gap-2 w-100">
+            <select className="rh-select form-select w-50" value={category} onChange={e => setCategory(e.target.value)}>
+              {CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat === "All" ? "Filter: All Categories" : cat}</option>
+              ))}
+            </select>
+            <select className="rh-select form-select w-50" value={sort} onChange={e => setSort(e.target.value)}>
+              <option value="default">Sort: Default</option>
+              <option value="price_asc">Price: Low → High</option>
+              <option value="price_desc">Price: High → Low</option>
+              <option value="name">Name A–Z</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -398,9 +400,8 @@ export default function RedHotStore({ onNavigateAdmin }) {
 
       <div className="rh-footer">
         <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "center", gap: "20px" }}>
-          <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setShowAbout(true)}>About Us</span>
-          <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setShowContact(true)}>Contact Us</span>
-          <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setShowPrivacy(true)}>Privacy Policy</span>
+          <span style={{ cursor: "pointer" }} onClick={() => setShowContact(true)}>Contact Us</span>
+          <span style={{ cursor: "pointer" }} onClick={() => setShowPrivacy(true)}>Privacy Policy</span>
         </div>
         © 2025 REDHOT — <span style={{ cursor: "pointer" }} onClick={onNavigateAdmin}>All rights reserved</span>
       </div>
