@@ -7,6 +7,54 @@ const crypto = require("crypto");
 const path = require("path");
 const { v2: cloudinary } = require("cloudinary");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const puppeteer = require("puppeteer-core");
+
+// Lazy browser instance — reused across requests, recreated on crash
+let _browser = null;
+async function getBrowser() {
+  if (_browser && _browser.connected) return _browser;
+  let executablePath;
+  try {
+    const chromium = require("@sparticuz/chromium");
+    executablePath = await chromium.executablePath();
+  } catch {
+    // Local dev — use system Chrome/Chromium
+    executablePath = process.env.CHROME_PATH ||
+      "/usr/bin/google-chrome" ||
+      "/usr/bin/chromium-browser" ||
+      "/usr/bin/chromium";
+  }
+  _browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-first-run",
+      "--no-zygote",
+      "--single-process"
+    ]
+  });
+  _browser.on("disconnected", () => { _browser = null; });
+  return _browser;
+}
+
+async function scrapeWithPuppeteer(url) {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
+    await page.setExtraHTTPHeaders({ "accept-language": "en-IN,en;q=0.9" });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+    // Wait for images to appear
+    await new Promise(r => setTimeout(r, 2500));
+    return await page.content();
+  } finally {
+    await page.close();
+  }
+}
 
 const app = express();
 
@@ -412,26 +460,32 @@ async function scrapeAffiliateUrl(earnKaroUrl, finalUrl) {
     throw err;
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  let html;
   try {
-    const response = await fetch(finalUrl, {
-      redirect: "follow",
-      signal: controller.signal,
-      headers: {
-        // Use a real browser UA — Myntra blocks generic bots
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "accept-language": "en-IN,en;q=0.9",
-        "accept-encoding": "gzip, deflate, br",
-        "cache-control": "no-cache",
-        "sec-fetch-dest": "document",
-        "sec-fetch-mode": "navigate",
-        "sec-fetch-site": "none",
-        "upgrade-insecure-requests": "1"
-      }
-    });
-    const html = await response.text();
+    // Try Puppeteer first (real browser — bypasses bot detection)
+    html = await scrapeWithPuppeteer(finalUrl);
+    console.log("[scrape] Puppeteer OK for", finalUrl.slice(0, 60));
+  } catch (puppeteerErr) {
+    console.warn("[scrape] Puppeteer failed, falling back to fetch:", puppeteerErr.message);
+    // Fallback: plain fetch with browser-like headers
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(finalUrl, {
+        redirect: "follow",
+        signal: controller.signal,
+        headers: {
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "accept-language": "en-IN,en;q=0.9"
+        }
+      });
+      html = await response.text();
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  try {
 
     // Try structured data extraction (Myntra-aware)
     const parsed = extractMyntraData(html);
@@ -478,8 +532,8 @@ async function scrapeAffiliateUrl(earnKaroUrl, finalUrl) {
       images: cloudinaryImages,
       cloudinary_images: cloudinaryImages,
       affiliate_url: earnKaroUrl,
-      source_url: response.url || finalUrl,
-      original_url: response.url || finalUrl,
+      source_url: finalUrl,
+      original_url: finalUrl,
       store: detected.store,
       store_priority: detected.priority,
       category: detected.category,
@@ -499,8 +553,8 @@ async function scrapeAffiliateUrl(earnKaroUrl, finalUrl) {
       seo_title: seo.seo_title,
       meta_description: seo.meta_description
     });
-  } finally {
-    clearTimeout(timeout);
+  } catch (scrapeErr) {
+    throw scrapeErr;
   }
 }
 
