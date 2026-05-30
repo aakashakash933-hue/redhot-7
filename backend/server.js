@@ -375,81 +375,85 @@ Description: ${product.description || ""}`;
   }
 }
 
-function extractMyntraData(html) {
-  // Myntra embeds product data in __myx_data__ or window.__data__ or __NEXT_DATA__
-  // Try each in order of reliability
+// ── Store-aware data extraction ───────────────────────────────────────────
 
-  // 1. Try __myx_data__ (Myntra's primary data blob)
-  const myxMatch = html.match(/window\.__myx\s*=\s*({.+?});\s*(?:window|<\/script>)/s) ||
-    html.match(/__myx_data__\s*=\s*({.+?});\s*(?:window|<\/script>)/s);
-  if (myxMatch) {
-    try { return { source: "myx", data: JSON.parse(myxMatch[1]) }; } catch {}
-  }
+const STORE_CDN = {
+  "Myntra":       /myntassets\.com/i,
+  "Ajio":         /static\.ajio\.com|ik\.imagekit/i,
+  "Amazon India": /images-amazon\.com|m\.media-amazon\.com/i,
+  "Flipkart":     /rukminim\d*\.flixcart\.com/i,
+};
 
-  // 2. Try __NEXT_DATA__
-  const nextMatch = html.match(/<script[^>]+id="__NEXT_DATA__"[^>]*>({.+?})<\/script>/s);
-  if (nextMatch) {
-    try { return { source: "next", data: JSON.parse(nextMatch[1]) }; } catch {}
-  }
-
-  // 3. Try pdpData JSON blob
-  const pdpMatch = html.match(/(?:pdpData|productData)\s*[:=]\s*({.+?})(?:;|\s*(?:window|var\s))/s);
-  if (pdpMatch) {
-    try { return { source: "pdp", data: JSON.parse(pdpMatch[1]) }; } catch {}
-  }
-
-  return null;
+function extractJsonBlobs(html) {
+  const blobs = [];
+  const nextMatch = html.match(/<script[^>]+id="__NEXT_DATA__"[^>]*>(\{.+?\})<\/script>/s);
+  if (nextMatch) { try { blobs.push(JSON.parse(nextMatch[1])); } catch {} }
+  const myxMatch = html.match(/window\.__myx\s*=\s*(\{.+?\});\s*(?:window|<\/script>)/s) ||
+                   html.match(/__myx_data__\s*=\s*(\{.+?\});\s*(?:window|<\/script>)/s);
+  if (myxMatch) { try { blobs.push(JSON.parse(myxMatch[1])); } catch {} }
+  return blobs;
 }
 
-function extractMyntraImages(html, parsed) {
+function extractImages(html, store) {
   const images = new Set();
+  const cdnPattern = STORE_CDN[store] || null;
 
-  // From parsed JSON blobs — walk common paths
-  if (parsed?.data) {
-    const stringify = JSON.stringify(parsed.data);
-    // Pull all CDN image URLs from the JSON
-    const cdnMatches = [...stringify.matchAll(/https?:\\?\/\\?\/(?:assets|cdn)\.[^"'\\]+\.(?:jpg|jpeg|png|webp)[^"'\\]*/gi)];
-    for (const m of cdnMatches) {
-      images.add(m[0].replace(/\\u002F/g, "/").replace(/\\/g, ""));
+  // 1. Extract from JSON blobs embedded in page
+  const blobs = extractJsonBlobs(html);
+  for (const blob of blobs) {
+    const str = JSON.stringify(blob);
+    const re = /"(https?:\/\/[^"\\]+\.(?:jpg|jpeg|png|webp)[^"\\]*)"/gi;
+    for (const m of str.matchAll(re)) {
+      const url = m[1].replace(/\\u002F/g, '/');
+      if (!cdnPattern || cdnPattern.test(url)) images.add(url);
     }
   }
 
-  // Myntra CDN pattern directly in HTML
-  const cdnRe = /https?:\/\/(?:assets|cdn)\.myntassets\.com\/[^"'\s\\]+\.(?:jpg|jpeg|png|webp)[^"'\s\\]*/gi;
-  for (const m of html.matchAll(cdnRe)) {
-    images.add(decodeHtml(m[0]));
+  // 2. CDN-specific pattern in raw HTML
+  if (cdnPattern) {
+    const re = /https?:\/\/\S+\.(?:jpg|jpeg|png|webp)\S*/gi;
+    for (const m of html.matchAll(re)) {
+      const url = decodeHtml(m[0]);
+      if (cdnPattern.test(url)) images.add(url);
+    }
   }
 
-  // Fallback: any image URL in HTML
-  const genericRe = /https?:\/\/[^"'\\\s]+\.(?:jpg|jpeg|png|webp)(?:[^"'\\\s]*)?/gi;
-  for (const m of html.matchAll(genericRe)) {
-    images.add(decodeHtml(m[0]));
+  // 3. og:image always included
+  const ogImage = pickMeta(html, ["og:image", "twitter:image"]);
+  if (ogImage) images.add(ogImage);
+
+  // 4. Generic fallback
+  if (images.size === 0) {
+    const re = /https?:\/\/\S+\.(?:jpg|jpeg|png|webp)\S*/gi;
+    for (const m of html.matchAll(re)) images.add(decodeHtml(m[0]));
   }
 
-  // Filter out tiny icons / tracking pixels
+  const JUNK = ["logo", "icon", "sprite", "1x1", "banner", "favicon", "badge", "rating", "star", "cart", "nav"];
   return [...images]
-    .filter(u => !u.includes("logo") && !u.includes("icon") && !u.includes("sprite") && !u.includes("1x1"))
+    .filter(u => !JUNK.some(j => u.toLowerCase().includes(j)))
     .slice(0, Number(process.env.MAX_IMAGES || 8));
 }
 
-function extractMyntraPrices(html, parsed) {
+function extractPrices(html, store) {
   let price = 0, mrp = 0;
-
-  if (parsed?.data) {
-    const str = JSON.stringify(parsed.data);
-    // Common Myntra JSON keys
-    const priceMatch = str.match(/"(?:price|discountedPrice|sellingPrice)"\s*:\s*(\d+)/i);
-    const mrpMatch = str.match(/"(?:mrp|originalPrice|listPrice|strikeThroughPrice)"\s*:\s*(\d+)/i);
-    if (priceMatch) price = Number(priceMatch[1]);
-    if (mrpMatch) mrp = Number(mrpMatch[1]);
+  const blobs = extractJsonBlobs(html);
+  for (const blob of blobs) {
+    if (price && mrp) break;
+    const str = JSON.stringify(blob);
+    const priceKeys = store === "Flipkart"
+      ? /"(?:finalPrice|discountedPrice|price)"\s*:\s*(\d+)/i
+      : /"(?:price|discountedPrice|sellingPrice|finalPrice|priceAmount)"\s*:\s*(\d+)/i;
+    const mrpKeys = /"(?:mrp|originalPrice|listPrice|strikeThroughPrice|maximumRetailPrice|wasPrice|listingPrice)"\s*:\s*(\d+)/i;
+    const pm = str.match(priceKeys);
+    const mm = str.match(mrpKeys);
+    if (pm && !price) price = Number(pm[1]);
+    if (mm && !mrp) mrp = Number(mm[1]);
   }
-
-  // HTML regex fallback
-  if (!price) price = extractNumber(html.match(/(?:price|sellingPrice|discountedPrice)["']?\s*[:=]\s*["']?₹?\s*([\d,.]+)/i)?.[1]);
-  if (!mrp) mrp = extractNumber(html.match(/(?:mrp|maximumRetailPrice|listPrice|strikeThroughPrice)["']?\s*[:=]\s*["']?₹?\s*([\d,.]+)/i)?.[1]);
-
+  if (!price) price = extractNumber(html.match(/(?:discountedPrice|sellingPrice|finalPrice|price)["']?\s*[:=]\s*["']?₹?\s*([\d,.]+)/i)?.[1]);
+  if (!mrp)   mrp   = extractNumber(html.match(/(?:mrp|maximumRetailPrice|listPrice|strikeThroughPrice)["']?\s*[:=]\s*["']?₹?\s*([\d,.]+)/i)?.[1]);
   return { price, mrp };
 }
+
 
 async function scrapeAffiliateUrl(earnKaroUrl, finalUrl) {
   const detected = detectStoreFromUrl(finalUrl);
@@ -488,12 +492,10 @@ async function scrapeAffiliateUrl(earnKaroUrl, finalUrl) {
   try {
 
     // Try structured data extraction (Myntra-aware)
-    const parsed = extractMyntraData(html);
-
     const title = pickMeta(html, ["og:title", "twitter:title"]) || decodeHtml(html.match(/<title[^>]*>([^<]+)/i)?.[1] || `${detected.store} Fashion Deal`);
     const description = pickMeta(html, ["og:description", "description", "twitter:description"]);
 
-    const extractedImages = extractMyntraImages(html, parsed);
+    const extractedImages = extractImages(html, detected.store);
 
     if (!extractedImages.length) {
       const err = new Error("No product images found. Myntra may be blocking automated access — try again in a moment.");
@@ -509,7 +511,7 @@ async function scrapeAffiliateUrl(earnKaroUrl, finalUrl) {
       throw err;
     }
 
-    const { price, mrp } = extractMyntraPrices(html, parsed);
+    const { price, mrp } = extractPrices(html, detected.store);
     const priceFromMeta = extractNumber(pickMeta(html, ["product:price:amount", "og:price:amount"]));
     const finalPrice = price || priceFromMeta;
     const discount = mrp > finalPrice && finalPrice > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
