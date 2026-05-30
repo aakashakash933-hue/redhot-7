@@ -99,7 +99,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
     setRedirecting(product.id);
     setTimeout(() => {
       setRedirecting(null);
-      window.open(product.affiliate_url || product.source_url || product.original_url || `${API}/go/${product.id}`, "_blank");
+      window.open(product.affiliate_url || product.affiliate_link || product.source_url || product.original_url || `${API}/go/${product.id}`, "_blank");
     }, 1100);
   };
 
