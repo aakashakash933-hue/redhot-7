@@ -281,6 +281,82 @@ Description: ${product.description || ""}`;
   }
 }
 
+function extractMyntraData(html) {
+  // Myntra embeds product data in __myx_data__ or window.__data__ or __NEXT_DATA__
+  // Try each in order of reliability
+
+  // 1. Try __myx_data__ (Myntra's primary data blob)
+  const myxMatch = html.match(/window\.__myx\s*=\s*({.+?});\s*(?:window|<\/script>)/s) ||
+    html.match(/__myx_data__\s*=\s*({.+?});\s*(?:window|<\/script>)/s);
+  if (myxMatch) {
+    try { return { source: "myx", data: JSON.parse(myxMatch[1]) }; } catch {}
+  }
+
+  // 2. Try __NEXT_DATA__
+  const nextMatch = html.match(/<script[^>]+id="__NEXT_DATA__"[^>]*>({.+?})<\/script>/s);
+  if (nextMatch) {
+    try { return { source: "next", data: JSON.parse(nextMatch[1]) }; } catch {}
+  }
+
+  // 3. Try pdpData JSON blob
+  const pdpMatch = html.match(/(?:pdpData|productData)\s*[:=]\s*({.+?})(?:;|\s*(?:window|var\s))/s);
+  if (pdpMatch) {
+    try { return { source: "pdp", data: JSON.parse(pdpMatch[1]) }; } catch {}
+  }
+
+  return null;
+}
+
+function extractMyntraImages(html, parsed) {
+  const images = new Set();
+
+  // From parsed JSON blobs — walk common paths
+  if (parsed?.data) {
+    const stringify = JSON.stringify(parsed.data);
+    // Pull all CDN image URLs from the JSON
+    const cdnMatches = [...stringify.matchAll(/https?:\\?\/\\?\/(?:assets|cdn)\.[^"'\\]+\.(?:jpg|jpeg|png|webp)[^"'\\]*/gi)];
+    for (const m of cdnMatches) {
+      images.add(m[0].replace(/\\u002F/g, "/").replace(/\\/g, ""));
+    }
+  }
+
+  // Myntra CDN pattern directly in HTML
+  const cdnRe = /https?:\/\/(?:assets|cdn)\.myntassets\.com\/[^"'\s\\]+\.(?:jpg|jpeg|png|webp)[^"'\s\\]*/gi;
+  for (const m of html.matchAll(cdnRe)) {
+    images.add(decodeHtml(m[0]));
+  }
+
+  // Fallback: any image URL in HTML
+  const genericRe = /https?:\/\/[^"'\\\s]+\.(?:jpg|jpeg|png|webp)(?:[^"'\\\s]*)?/gi;
+  for (const m of html.matchAll(genericRe)) {
+    images.add(decodeHtml(m[0]));
+  }
+
+  // Filter out tiny icons / tracking pixels
+  return [...images]
+    .filter(u => !u.includes("logo") && !u.includes("icon") && !u.includes("sprite") && !u.includes("1x1"))
+    .slice(0, Number(process.env.MAX_IMAGES || 8));
+}
+
+function extractMyntraPrices(html, parsed) {
+  let price = 0, mrp = 0;
+
+  if (parsed?.data) {
+    const str = JSON.stringify(parsed.data);
+    // Common Myntra JSON keys
+    const priceMatch = str.match(/"(?:price|discountedPrice|sellingPrice)"\s*:\s*(\d+)/i);
+    const mrpMatch = str.match(/"(?:mrp|originalPrice|listPrice|strikeThroughPrice)"\s*:\s*(\d+)/i);
+    if (priceMatch) price = Number(priceMatch[1]);
+    if (mrpMatch) mrp = Number(mrpMatch[1]);
+  }
+
+  // HTML regex fallback
+  if (!price) price = extractNumber(html.match(/(?:price|sellingPrice|discountedPrice)["']?\s*[:=]\s*["']?₹?\s*([\d,.]+)/i)?.[1]);
+  if (!mrp) mrp = extractNumber(html.match(/(?:mrp|maximumRetailPrice|listPrice|strikeThroughPrice)["']?\s*[:=]\s*["']?₹?\s*([\d,.]+)/i)?.[1]);
+
+  return { price, mrp };
+}
+
 async function scrapeAffiliateUrl(earnKaroUrl, finalUrl) {
   const detected = detectStoreFromUrl(finalUrl);
   if (!detected) {
@@ -297,20 +373,30 @@ async function scrapeAffiliateUrl(earnKaroUrl, finalUrl) {
       redirect: "follow",
       signal: controller.signal,
       headers: {
-        "user-agent": "Mozilla/5.0 RedhotAffiliateAgent/3.0",
-        "accept": "text/html,application/xhtml+xml"
+        // Use a real browser UA — Myntra blocks generic bots
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "accept-language": "en-IN,en;q=0.9",
+        "accept-encoding": "gzip, deflate, br",
+        "cache-control": "no-cache",
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "none",
+        "upgrade-insecure-requests": "1"
       }
     });
     const html = await response.text();
+
+    // Try structured data extraction (Myntra-aware)
+    const parsed = extractMyntraData(html);
+
     const title = pickMeta(html, ["og:title", "twitter:title"]) || decodeHtml(html.match(/<title[^>]*>([^<]+)/i)?.[1] || `${detected.store} Fashion Deal`);
     const description = pickMeta(html, ["og:description", "description", "twitter:description"]);
-    const primaryImage = pickMeta(html, ["og:image", "twitter:image"]);
-    const extractedImages = [...new Set([
-      primaryImage,
-      ...[...html.matchAll(/https?:\/\/[^"'\\\s]+(?:jpg|jpeg|png|webp)(?:[^"'\\\s]*)?/gi)].map(match => decodeHtml(match[0]))
-    ].filter(Boolean))].slice(0, Number(process.env.MAX_IMAGES || 8));
+
+    const extractedImages = extractMyntraImages(html, parsed);
+
     if (!extractedImages.length) {
-      const err = new Error("No product images found.");
+      const err = new Error("No product images found. Myntra may be blocking automated access — try again in a moment.");
       err.status = 422;
       err.stage = "Scraping product";
       throw err;
@@ -322,11 +408,14 @@ async function scrapeAffiliateUrl(earnKaroUrl, finalUrl) {
       err.stage = "Uploading images";
       throw err;
     }
-    const price = extractNumber(pickMeta(html, ["product:price:amount", "og:price:amount"]) || html.match(/(?:price|sellingPrice)["']?\s*[:=]\s*["']?₹?\s*([\d,.]+)/i)?.[1]);
-    const mrp = extractNumber(html.match(/(?:mrp|maximumRetailPrice|listPrice)["']?\s*[:=]\s*["']?₹?\s*([\d,.]+)/i)?.[1]);
-    const discount = mrp > price && price > 0 ? Math.round(((mrp - price) / mrp) * 100) : 0;
-    if (!title || !price) {
-      const err = new Error("Could not extract product details. The page may have changed.");
+
+    const { price, mrp } = extractMyntraPrices(html, parsed);
+    const priceFromMeta = extractNumber(pickMeta(html, ["product:price:amount", "og:price:amount"]));
+    const finalPrice = price || priceFromMeta;
+    const discount = mrp > finalPrice && finalPrice > 0 ? Math.round(((mrp - finalPrice) / mrp) * 100) : 0;
+
+    if (!title) {
+      const err = new Error("Could not extract product title. The page may have changed.");
       err.status = 422;
       err.stage = "Scraping product";
       throw err;
@@ -336,7 +425,7 @@ async function scrapeAffiliateUrl(earnKaroUrl, finalUrl) {
       name: title.slice(0, 120),
       title,
       description,
-      price,
+      price: finalPrice,
       mrp,
       discount,
       image: cloudinaryImages[0],
