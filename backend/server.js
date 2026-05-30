@@ -112,14 +112,22 @@ function detectStoreFromUrl(value) {
   return null;
 }
 
+// All known affiliate short-link / redirect domains
+const AFFILIATE_DOMAINS = [
+  "earnkaro", "ekaro",
+  "myntr.it",
+  "short.gy", "mysk.short.gy",
+  "linksredirect",
+  "bit.ly", "tinyurl.com",
+  "clnk.in",
+  "amzn.in", "amzn.to",
+  "fkrt.it", "fkrt.cc"
+];
+
 function isEarnKaroUrl(value) {
   try {
     const hostname = new URL(value).hostname.toLowerCase();
-    return hostname.includes("earnkaro") ||
-      hostname.includes("ekaro") ||
-      hostname.includes("mysk.short.gy") ||
-      hostname.includes("short.gy") ||
-      hostname.includes("linksredirect");
+    return AFFILIATE_DOMAINS.some(d => hostname.includes(d));
   } catch {
     return false;
   }
@@ -144,7 +152,8 @@ function normalizeUrlForMemory(value) {
 
 async function resolveEarnKaroLink(earnKaroUrl) {
   let current = earnKaroUrl;
-  const maxHops = Number(process.env.MAX_REDIRECT_HOPS || 10);
+  const maxHops = Number(process.env.MAX_REDIRECT_HOPS || 15);
+  const browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
   for (let hop = 0; hop <= maxHops; hop++) {
     const controller = new AbortController();
@@ -154,17 +163,54 @@ async function resolveEarnKaroLink(earnKaroUrl) {
         redirect: "manual",
         signal: controller.signal,
         headers: {
-          "user-agent": "Mozilla/5.0 RedhotAffiliateAgent/3.0",
-          "accept": "text/html,application/xhtml+xml"
+          "user-agent": browserUA,
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "accept-language": "en-IN,en;q=0.9"
         }
       });
+
+      // Follow HTTP redirects
       const location = response.headers.get("location");
       if (response.status >= 300 && response.status < 400 && location) {
         current = new URL(location, current).toString();
         continue;
       }
+
+      // If we landed on a page, check for JS/meta redirects
+      if (response.status === 200) {
+        const html = await response.text();
+
+        // meta refresh
+        const metaRefresh = html.match(/<meta[^>]+http-equiv=["']refresh["'][^>]+content=["'][^;]*;\s*url=([^"']+)/i);
+        if (metaRefresh && metaRefresh[1]) {
+          const refreshUrl = decodeHtml(metaRefresh[1].trim());
+          if (refreshUrl && refreshUrl !== current) {
+            current = new URL(refreshUrl, current).toString();
+            continue;
+          }
+        }
+
+        // JS window.location redirect
+        const jsRedirect = html.match(/window\.location(?:\.href)?\s*=\s*["']([^"']+)/i) ||
+          html.match(/location\.replace\(["']([^"']+)/i);
+        if (jsRedirect && jsRedirect[1]) {
+          const jsUrl = decodeHtml(jsRedirect[1].trim());
+          if (jsUrl && jsUrl.startsWith("http") && jsUrl !== current) {
+            current = new URL(jsUrl, current).toString();
+            continue;
+          }
+        }
+
+        // Already on a supported store
+        if (detectStoreFromUrl(current)) return current;
+
+        // Final fallback: find store URL embedded in page
+        const storeUrlMatch = html.match(/https?:\/\/(?:www\.)?(?:myntra|ajio|amazon|flipkart)\.[^"'\s]+/i);
+        if (storeUrlMatch) return decodeHtml(storeUrlMatch[0]);
+      }
+
       return current;
-    } catch {
+    } catch (fetchErr) {
       const err = new Error("Could not resolve affiliate link. Please check the URL.");
       err.status = 400;
       err.stage = "Resolving link";
@@ -174,7 +220,7 @@ async function resolveEarnKaroLink(earnKaroUrl) {
     }
   }
 
-  const err = new Error("Could not resolve affiliate link. Please check the URL.");
+  const err = new Error("Could not resolve affiliate link after too many redirects.");
   err.status = 400;
   err.stage = "Resolving link";
   throw err;
@@ -660,7 +706,9 @@ app.post("/api/manual-affiliate", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Please enter a valid link.", stage: "Resolving link" });
     }
 
-    const finalUrl = isEarnKaroUrl(affiliateUrl) ? await resolveEarnKaroLink(affiliateUrl) : affiliateUrl;
+    // Always resolve: short links, affiliate trackers, and any non-store URL
+    const needsResolve = isEarnKaroUrl(affiliateUrl) || !detectStoreFromUrl(affiliateUrl);
+    const finalUrl = needsResolve ? await resolveEarnKaroLink(affiliateUrl) : affiliateUrl;
     const detected = detectStoreFromUrl(finalUrl);
     if (!detected) {
       return res.status(400).json({ error: "Store not supported. Supported stores: Myntra, Amazon, Flipkart, Ajio.", stage: "Detecting store" });
