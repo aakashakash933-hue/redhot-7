@@ -260,7 +260,7 @@ export default function RedHotAdmin({ onNavigateStore }) {
   const runManualPublish = async (e) => {
     e.preventDefault();
     if (!manualUrl.trim()) {
-      setManualError("Paste an EarnKaro link first.");
+      setManualError("Paste an EarnKaro or supported product link first.");
       return;
     }
 
@@ -438,7 +438,7 @@ export default function RedHotAdmin({ onNavigateStore }) {
           </div>
           <form onSubmit={runManualPublish}>
             <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) auto", gap:12, alignItems:"start" }}>
-              <input className="rha-inp" placeholder="https://mysk.short.gy/... or https://ekaro.in/..." value={manualUrl} onChange={e => setManualUrl(e.target.value)} disabled={manualLoading} />
+              <input className="rha-inp" placeholder="EarnKaro link or Myntra/Amazon/Flipkart/Ajio product URL" value={manualUrl} onChange={e => setManualUrl(e.target.value)} disabled={manualLoading} />
               <button className="rha-btn-p" type="submit" disabled={manualLoading}>{manualLoading ? "RUNNING" : "PUBLISH"}</button>
             </div>
           </form>

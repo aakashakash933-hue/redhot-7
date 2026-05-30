@@ -115,10 +115,20 @@ function detectStoreFromUrl(value) {
 function isEarnKaroUrl(value) {
   try {
     const hostname = new URL(value).hostname.toLowerCase();
-    return hostname.includes("earnkaro") || hostname.includes("ekaro") || hostname.includes("mysk.short.gy");
+    return hostname.includes("earnkaro") ||
+      hostname.includes("ekaro") ||
+      hostname.includes("mysk.short.gy") ||
+      hostname.includes("short.gy") ||
+      hostname.includes("linksredirect");
   } catch {
     return false;
   }
+}
+
+function ensureHttpUrl(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
 function normalizeUrlForMemory(value) {
@@ -554,15 +564,14 @@ app.post("/api/products", requireAuth, async (req, res) => {
 
 app.post("/api/manual-affiliate", requireAuth, async (req, res) => {
   try {
-    const affiliateUrl = String(req.body.affiliate_url || req.body.url || "").trim();
-    if (!affiliateUrl || !/^https?:\/\//i.test(affiliateUrl)) {
-      return res.status(400).json({ error: "Please enter a valid EarnKaro link.", stage: "Resolving link" });
-    }
-    if (!isEarnKaroUrl(affiliateUrl)) {
-      return res.status(400).json({ error: "Please paste an EarnKaro link.", stage: "Resolving link" });
+    const affiliateUrl = ensureHttpUrl(req.body.affiliate_url || req.body.url);
+    try {
+      new URL(affiliateUrl);
+    } catch {
+      return res.status(400).json({ error: "Please enter a valid link.", stage: "Resolving link" });
     }
 
-    const finalUrl = await resolveEarnKaroLink(affiliateUrl);
+    const finalUrl = isEarnKaroUrl(affiliateUrl) ? await resolveEarnKaroLink(affiliateUrl) : affiliateUrl;
     const detected = detectStoreFromUrl(finalUrl);
     if (!detected) {
       return res.status(400).json({ error: "Store not supported. Supported stores: Myntra, Amazon, Flipkart, Ajio.", stage: "Detecting store" });
