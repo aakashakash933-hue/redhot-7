@@ -257,10 +257,22 @@ export default function RedHotAdmin({ onNavigateStore }) {
     }
   };
 
+  // Domains that hard-block server-side resolution (JS/cookie-gated shorteners)
+  const BLOCKED_SHORTENERS = ["myntr.it", "amzn.in", "amzn.to", "fkrt.it", "fkrt.cc"];
+  const isBlockedShortener = (url) => {
+    try { return BLOCKED_SHORTENERS.some(d => new URL(url).hostname.includes(d)); }
+    catch { return false; }
+  };
+
   const runManualPublish = async (e) => {
     e.preventDefault();
     if (!manualUrl.trim()) {
       setManualError("Paste an EarnKaro or supported product link first.");
+      return;
+    }
+    if (isBlockedShortener(manualUrl.trim())) {
+      setManualError("myntr.it links block server access. Open the link in your browser, copy the full Myntra URL from the address bar, then paste that here.");
+      setManualStage("Blocked shortener detected");
       return;
     }
 
@@ -433,12 +445,15 @@ export default function RedHotAdmin({ onNavigateStore }) {
         <div className="rha-card" style={{ padding:28, marginBottom:36, position:"relative", overflow:"hidden" }}>
           <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:"linear-gradient(90deg,#62b376,#c0392b,transparent)" }} />
           <div style={{ fontSize:12, letterSpacing:"0.2em", color:"#62b376", marginBottom:10, fontWeight:600 }}>EARNKARO LINK PUBLISH</div>
-          <div style={{ fontSize:12, color:"#777", marginBottom:18 }}>
-            Paste one EarnKaro link. The system resolves the final store URL, scrapes product data, uploads images to Cloudinary, generates SEO, and publishes it.
+          <div style={{ fontSize:12, color:"#777", marginBottom:8 }}>
+            Paste a product URL from Myntra, Ajio, Amazon, or Flipkart. The system scrapes product data, uploads images to Cloudinary, generates SEO, and publishes it.
+          </div>
+          <div style={{ fontSize:11, color:"#555", marginBottom:16, padding:"8px 12px", background:"#0d0d0d", borderRadius:4, border:"1px solid #1a1a1a" }}>
+            ⚠️ <strong style={{color:"#888"}}>myntr.it / amzn.in short links don't work</strong> — open the link in your browser, copy the full URL from the address bar, paste that here.
           </div>
           <form onSubmit={runManualPublish}>
             <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) auto", gap:12, alignItems:"start" }}>
-              <input className="rha-inp" placeholder="EarnKaro link or Myntra/Amazon/Flipkart/Ajio product URL" value={manualUrl} onChange={e => setManualUrl(e.target.value)} disabled={manualLoading} />
+              <input className="rha-inp" placeholder="https://www.myntra.com/... or https://www.ajio.com/..." value={manualUrl} onChange={e => setManualUrl(e.target.value)} disabled={manualLoading} />
               <button className="rha-btn-p" type="submit" disabled={manualLoading}>{manualLoading ? "RUNNING" : "PUBLISH"}</button>
             </div>
           </form>
