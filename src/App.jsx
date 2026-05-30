@@ -114,6 +114,7 @@ function usePager(initial) {
   const [previous, setPrevious] = useState(null);
   const [phase,    setPhase]    = useState("idle");
   const [isBack,   setIsBack]   = useState(false);
+  const [canGoBack, setCanGoBack] = useState(false);
   const history  = useRef([initial]);
   const pending  = useRef(null);
   const busy     = useRef(false);
@@ -139,11 +140,8 @@ function usePager(initial) {
       }, ENTER_MS + 50);
     }, EXIT_MS);
 
-    if (back) {
-      history.current = history.current.slice(0, -1);
-    } else {
-      history.current = [...history.current, next];
-    }
+    history.current = back ? history.current.slice(0, -1) : [...history.current, next];
+    setCanGoBack(history.current.length > 1);
   }, [current]);
 
   const goBack = useCallback(() => {
@@ -151,7 +149,6 @@ function usePager(initial) {
     navigate(history.current[history.current.length - 2], true);
   }, [navigate]);
 
-  const canGoBack = history.current.length > 1;
   return { current, previous, phase, isBack, navigate, goBack, canGoBack };
 }
 

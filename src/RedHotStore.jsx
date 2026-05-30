@@ -21,7 +21,15 @@ function useProducts() {
   return { products, loading, error };
 }
 
-const CATEGORIES = ["All", "Men's Topwear", "Men's Bottomwear", "Women's Topwear", "Women's Bottomwear", "Accessories"];
+const CATEGORIES = ["All", "Women Fashion", "Ethnic Wear", "Men Fashion", "Topwear", "Bottomwear", "Accessories", "Footwear", "Beauty Fashion"];
+
+function tagsToText(tags) {
+  return Array.isArray(tags) ? tags.join(" ") : (tags || "");
+}
+
+function isPrimaryStore(product) {
+  return product.store_priority === "PRIMARY" || ["Myntra", "Ajio", "Nykaa Fashion"].includes(product.store);
+}
 
 export default function RedHotStore({ onNavigateAdmin }) {
   const { products, loading, error } = useProducts();
@@ -47,6 +55,12 @@ export default function RedHotStore({ onNavigateAdmin }) {
     }, 350);
   }, []);
 
+  const openDetail = useCallback((product) => {
+    setDetail(product);
+    document.body.style.overflow = "hidden";
+    requestAnimationFrame(() => setDetailVisible(true));
+  }, []);
+
   // close detail on ESC
   useEffect(() => {
     const fn = (e) => { if (e.key === "Escape") closeDetail(); };
@@ -57,14 +71,25 @@ export default function RedHotStore({ onNavigateAdmin }) {
   const filtered = products
     .filter(p => {
       const q = search.toLowerCase();
-      return (
-        (p.name || "").toLowerCase().includes(q) &&
-        (category === "All" || p.category === category)
-      );
+      const matchCat = category === "All" 
+        || p.category === category
+        || (category === "Men" && (p.category || "").startsWith("Men"))
+        || (category === "Women" && (p.category || "").startsWith("Women"));
+      const haystack = [
+        p.name,
+        p.category,
+        p.store,
+        p.trend_keyword,
+        tagsToText(p.tags),
+        p.description,
+      ].join(" ").toLowerCase();
+      return haystack.includes(q) && matchCat;
     })
     .sort((a, b) => {
       if (sort === "price_asc")  return a.price - b.price;
       if (sort === "price_desc") return b.price - a.price;
+      if (sort === "rating")     return (b.rating || 0) - (a.rating || 0);
+      if (sort === "discount")   return (b.discount || 0) - (a.discount || 0);
       if (sort === "name")       return (a.name || "").localeCompare(b.name || "");
       return 0;
     });
@@ -74,7 +99,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
     setRedirecting(product.id);
     setTimeout(() => {
       setRedirecting(null);
-      window.open(`${API}/go/${product.id}`, "_blank");
+      window.open(product.affiliate_url || product.source_url || product.original_url || `${API}/go/${product.id}`, "_blank");
     }, 1100);
   };
 
@@ -91,14 +116,14 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-navbar { background:rgba(247,245,242,0.96); backdrop-filter:blur(14px); border-bottom:1px solid var(--warm); padding:0 2rem; height:64px; display:flex; align-items:center; justify-content:space-between; width:100%; position:sticky; top:0; z-index:9999; }
         .rh-brand { font-family:'Cormorant Garamond',serif; font-weight:700; font-size:1.6rem; color:var(--red); letter-spacing:0.04em; cursor:default; }
         .rh-nav-actions { display:flex; align-items:center; gap:10px; }
-        .rh-about-btn { font-family:'DM Sans',sans-serif; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; background:transparent; border:1px solid var(--sand); color:var(--taupe); padding:7px 18px; border-radius:3px; cursor:pointer; transition:all 0.2s; }
+        .rh-about-btn { font-family:'DM Sans',sans-serif; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; background:transparent; border:1px solid var(--sand); color:#000000; padding:7px 18px; border-radius:3px; cursor:pointer; transition:all 0.2s; }
         .rh-about-btn:hover { border-color:var(--red); color:var(--red); background:var(--red-dim); }
 
         .rh-hero { background:linear-gradient(160deg,var(--warm) 0%,var(--cream) 60%); border-bottom:1px solid var(--sand); padding:50px 2rem 35px; text-align:center; width:100%; }
-        .rh-hero-eyebrow { font-family:'DM Sans',sans-serif; font-size:10px; letter-spacing:0.38em; color:var(--taupe); font-weight:500; margin-bottom:1.1rem; text-transform:uppercase; }
+        .rh-hero-eyebrow { font-family:'DM Sans',sans-serif; font-size:10px; letter-spacing:0.38em; color:#000000; font-weight:500; margin-bottom:1.1rem; text-transform:uppercase; }
         .rh-hero-title { font-family:'Cormorant Garamond',serif; font-size:clamp(2rem,4vw,3.5rem); font-weight:700; line-height:1.08; color:var(--charcoal); margin-bottom:1rem; }
         .rh-hero-title span { color:var(--red); font-style:italic; }
-        .rh-hero-sub { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--taupe); letter-spacing:0.1em; max-width:380px; margin:0 auto; }
+        .rh-hero-sub { font-family:'DM Sans',sans-serif; font-size:13px; color:#000000; letter-spacing:0.1em; max-width:380px; margin:0 auto; }
         .hero-fade { opacity:0; transform:translateY(24px); transition:opacity .9s ease,transform .9s ease; }
         .hero-fade.in { opacity:1; transform:translateY(0); }
 
@@ -120,11 +145,19 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-card:hover .rh-card-img { transform:scale(1.04); }
         .rh-badge-hot { position:absolute; top:10px; left:10px; background:var(--white); color:var(--red); font-family:'DM Sans',sans-serif; font-size:9px; font-weight:700; letter-spacing:0.1em; padding:4px 8px; border-radius:2px; text-transform:uppercase; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
         .rh-badge-new { position:absolute; top:10px; left:10px; background:var(--white); color:var(--charcoal); font-family:'DM Sans',sans-serif; font-size:9px; font-weight:700; letter-spacing:0.1em; padding:4px 8px; border-radius:2px; text-transform:uppercase; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+        .rh-store-badge { position:absolute; right:10px; bottom:10px; background:rgba(255,255,255,0.92); color:var(--charcoal); font-family:'DM Sans',sans-serif; font-size:9px; font-weight:700; letter-spacing:0.08em; padding:4px 8px; border-radius:2px; text-transform:uppercase; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
         .rh-card-body { padding:12px; background:var(--white); }
         .rh-cat-label { font-family:'DM Sans',sans-serif; font-size:9px; letter-spacing:0.1em; color:var(--taupe); text-transform:uppercase; margin-bottom:4px; }
         .rh-prod-name { font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; color:var(--charcoal); line-height:1.3; margin-bottom:4px; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
         .rh-prod-desc { display:none; }
         .rh-price { font-family:'DM Sans',sans-serif; font-size:14px; font-weight:700; color:var(--charcoal); }
+        .rh-mrp { font-family:'DM Sans',sans-serif; font-size:11px; color:var(--taupe); text-decoration:line-through; margin-left:6px; }
+        .rh-discount { font-family:'DM Sans',sans-serif; font-size:10px; color:var(--red); margin-top:2px; }
+        .rh-card-meta { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:8px 0 4px; min-height:18px; }
+        .rh-rating { font-family:'DM Sans',sans-serif; font-size:11px; color:#2f7d43; font-weight:700; }
+        .rh-source { font-family:'DM Sans',sans-serif; font-size:9px; letter-spacing:0.12em; color:var(--taupe); text-transform:uppercase; }
+        .rh-tag-row { display:flex; gap:4px; flex-wrap:wrap; min-height:18px; margin-bottom:8px; }
+        .rh-tag { font-family:'DM Sans',sans-serif; font-size:8px; letter-spacing:0.08em; color:var(--umber); border:1px solid var(--warm); padding:2px 5px; border-radius:2px; text-transform:uppercase; }
         .rh-buy-btn { font-family:'DM Sans',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; background:transparent; color:var(--red); border:none; padding:4px 0; cursor:pointer; transition:all 0.2s; }
         .rh-buy-btn:hover { color:#a01515; }
 
@@ -158,6 +191,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-about-modal { background:var(--white); border-radius:8px; padding:48px 44px; width:480px; max-width:95vw; position:relative; border-top:3px solid var(--red); }
         .rh-about-close { position:absolute; top:16px; right:18px; background:none; border:none; font-size:20px; color:var(--taupe); cursor:pointer; line-height:1; }
         .rh-about-close:hover { color:var(--red); }
+        .rh-disclosure { font-family:'DM Sans',sans-serif; font-size:11px; color:var(--taupe); line-height:1.7; max-width:780px; margin:0 auto; padding:16px 2rem 0; text-align:center; }
 
         /* ── DETAIL MODAL ── */
         .rh-detail-backdrop {
@@ -195,6 +229,7 @@ export default function RedHotStore({ onNavigateAdmin }) {
         .rh-detail-name { font-family:'Cormorant Garamond',serif; font-size:clamp(1.8rem,5vw,2.6rem); font-weight:700; color:var(--charcoal); line-height:1.1; margin-bottom:16px; }
         .rh-detail-desc { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--taupe); line-height:1.85; margin-bottom:24px; }
         .rh-detail-price { font-family:'DM Sans',sans-serif; font-size:1.6rem; font-weight:700; color:var(--red); margin-bottom:24px; }
+        .rh-detail-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:20px; }
         .rh-detail-divider { height:1px; background:var(--warm); margin-bottom:24px; }
         .rh-detail-buy {
           font-family:'DM Sans',sans-serif; font-size:11px; font-weight:600;
@@ -270,8 +305,8 @@ export default function RedHotStore({ onNavigateAdmin }) {
               onError={e => { e.target.src = "https://placehold.co/720x420?text=No+Image"; }}
             />
 
-            <div className="rh-detail-body">
-              <div className="rh-detail-cat">{detail.category}</div>
+              <div className="rh-detail-body">
+              <div className="rh-detail-cat">{detail.store || "Redhot"} • {isPrimaryStore(detail) ? "Primary Store" : "Affiliate Partner"}</div>
               <h2 className="rh-detail-name">{detail.name}</h2>
 
               <div className="rh-detail-meta">
@@ -287,6 +322,18 @@ export default function RedHotStore({ onNavigateAdmin }) {
                     </div>
                   </div>
                 )}
+                {Number(detail.rating) > 0 && (
+                  <div className="rh-detail-meta-item">
+                    <div className="rh-detail-meta-label">Rating Signal</div>
+                    <div className="rh-detail-meta-value">{Number(detail.rating).toFixed(1)} ★ {detail.review_count ? `(${detail.review_count} reviews)` : ""}</div>
+                  </div>
+                )}
+                {!!detail.discount && (
+                  <div className="rh-detail-meta-item">
+                    <div className="rh-detail-meta-label">Deal</div>
+                    <div className="rh-detail-meta-value" style={{ color:"#c81e1e" }}>{detail.discount}% off</div>
+                  </div>
+                )}
               </div>
 
               <div className="rh-detail-divider" />
@@ -295,10 +342,23 @@ export default function RedHotStore({ onNavigateAdmin }) {
                 <p className="rh-detail-desc">{detail.description}</p>
               )}
 
-              <div className="rh-detail-price">₹{(detail.price || 0).toLocaleString()}</div>
+              {Array.isArray(detail.tags) && detail.tags.length > 0 && (
+                <div className="rh-detail-tags">
+                  {detail.tags.slice(0, 8).map(tag => <span className="rh-tag" key={tag}>{tag}</span>)}
+                </div>
+              )}
+
+              <p className="rh-detail-desc" style={{ fontSize:11, marginBottom:18 }}>
+                {detail.affiliate_disclosure || "This post contains affiliate links."}
+              </p>
+
+              <div className="rh-detail-price">
+                ₹{(detail.price || 0).toLocaleString()}
+                {!!detail.mrp && <span className="rh-mrp">₹{detail.mrp.toLocaleString()}</span>}
+              </div>
 
               <button className="rh-detail-buy" onClick={(e) => { handleBuy(detail, e); closeDetail(); }}>
-                Shop Now — ₹{(detail.price || 0).toLocaleString()}
+                Shop via {detail.store || "Affiliate"} — ₹{(detail.price || 0).toLocaleString()}
               </button>
             </div>
           </div>
@@ -314,25 +374,28 @@ export default function RedHotStore({ onNavigateAdmin }) {
 
       <div className="rh-hero">
         <div className={`hero-fade ${heroVisible ? "in" : ""}`}>
-          <div className="rh-hero-eyebrow">New Arrivals</div>
-          <h1 className="rh-hero-title"><span>Curated & Coveted</span></h1>
-          <p className="rh-hero-sub">Refined drops. Every piece worth wearing.</p>
+          <div className="rh-hero-eyebrow">Instagram-trending affiliate picks</div>
+          <h1 className="rh-hero-title"><span>Redhot Fashion Finds</span></h1>
+          <p className="rh-hero-sub">Myntra, Ajio and Nykaa Fashion first. Verified ratings, live deals, direct affiliate links.</p>
         </div>
       </div>
 
       <div className="rh-filters">
         <div className="d-flex flex-column gap-2 mb-3">
-          <input className="rh-search form-control w-100" placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)} />
           <div className="d-flex gap-2 w-100">
-            <select className="rh-select form-select w-50" value={category} onChange={e => setCategory(e.target.value)}>
-              {CATEGORIES.map(cat => (
-                <option key={cat} value={cat}>{cat === "All" ? "Filter: All Categories" : cat}</option>
-              ))}
+            <input className="rh-search form-control flex-grow-1" placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)} />
+            { (category !== "All" || search !== "") && <button className="rh-about-btn" style={{ padding: "0 1rem" }} onClick={() => {setCategory("All"); setSearch("");}}>Clear</button> }
+          </div>
+          <div className="d-flex gap-2 w-100">
+            <select className="rh-select form-select flex-grow-1" style={{ width: "50%", padding: "0.55rem 0.5rem" }} value={category} onChange={e => setCategory(e.target.value)}>
+              {CATEGORIES.map(item => <option key={item} value={item}>{item}</option>)}
             </select>
-            <select className="rh-select form-select w-50" value={sort} onChange={e => setSort(e.target.value)}>
-              <option value="default">Sort: Default</option>
+            <select className="rh-select form-select flex-grow-1" style={{ width: "50%", padding: "0.55rem 0.5rem" }} value={sort} onChange={e => setSort(e.target.value)}>
+              <option value="default">Sort</option>
               <option value="price_asc">Price: Low → High</option>
               <option value="price_desc">Price: High → Low</option>
+              <option value="rating">Highest Rated</option>
+              <option value="discount">Best Discount</option>
               <option value="name">Name A–Z</option>
             </select>
           </div>
@@ -341,6 +404,10 @@ export default function RedHotStore({ onNavigateAdmin }) {
 
       <div className="rh-count">
         {loading ? "Loading products…" : `Showing ${filtered.length} of ${products.length} products`}
+      </div>
+
+      <div className="rh-disclosure">
+        This post contains affiliate links. Product links may be tracked by affiliate partners at no extra cost to you.
       </div>
 
       <div className="rh-grid-wrap">
@@ -382,12 +449,26 @@ export default function RedHotStore({ onNavigateAdmin }) {
                     {product.badge && (
                       <span className={product.badge === "HOT" ? "rh-badge-hot" : "rh-badge-new"}>{product.badge}</span>
                     )}
+                    {product.store && <span className="rh-store-badge">{product.store}</span>}
                   </div>
                   <div className="rh-card-body">
                     <div className="rh-cat-label">{(product.category || "").toUpperCase()}</div>
                     <h3 className="rh-prod-name">{product.name}</h3>
+                    <div className="rh-card-meta">
+                      <span className="rh-source">{isPrimaryStore(product) ? "Primary pick" : "Partner pick"}</span>
+                      {Number(product.rating) > 0 && <span className="rh-rating">{Number(product.rating).toFixed(1)} ★</span>}
+                    </div>
+                    {Array.isArray(product.tags) && product.tags.length > 0 && (
+                      <div className="rh-tag-row">
+                        {product.tags.slice(0, 3).map(tag => <span className="rh-tag" key={tag}>{tag}</span>)}
+                      </div>
+                    )}
                     <div className="d-flex align-items-center justify-content-between">
-                      <span className="rh-price">₹{(product.price || 0).toLocaleString()}</span>
+                      <span>
+                        <span className="rh-price">₹{(product.price || 0).toLocaleString()}</span>
+                        {!!product.mrp && <span className="rh-mrp">₹{product.mrp.toLocaleString()}</span>}
+                        {!!product.discount && <div className="rh-discount">{product.discount}% off</div>}
+                      </span>
                       <button className="rh-buy-btn" onClick={(e) => handleBuy(product, e)}>Link</button>
                     </div>
                   </div>
