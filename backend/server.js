@@ -6,6 +6,7 @@ const cors = require("cors");
 const crypto = require("crypto");
 const path = require("path");
 const { v2: cloudinary } = require("cloudinary");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
 
@@ -34,12 +35,16 @@ app.use(cors({
 app.use(express.json());
 
 const FILE = path.join(__dirname, "products.json");
+const PUBLISHED_FILE = path.join(__dirname, "published_urls.json");
 
 // Ensure file exists synchronously at startup
 if (!fs.existsSync(FILE)) {
   fs.writeFileSync(FILE, "[]");
 }
 
+if (!fs.existsSync(PUBLISHED_FILE)) {
+  fs.writeFileSync(PUBLISHED_FILE, "[]");
+}
 
 // Helper function for safe, non-blocking file reads
 async function readProducts() {
@@ -58,6 +63,21 @@ async function writeProducts(data) {
   const tempFile = `${FILE}.tmp`;
   await fsp.writeFile(tempFile, JSON.stringify(data, null, 2));
   await fsp.rename(tempFile, FILE);
+}
+
+async function readJson(file, fallback) {
+  try {
+    const data = await fsp.readFile(file, "utf-8");
+    return JSON.parse(data);
+  } catch {
+    return fallback;
+  }
+}
+
+async function writeJson(file, data) {
+  const tempFile = `${file}.tmp`;
+  await fsp.writeFile(tempFile, JSON.stringify(data, null, 2));
+  await fsp.rename(tempFile, file);
 }
 
 
@@ -87,11 +107,87 @@ function detectStoreFromUrl(value) {
 
   if (hostname.includes("myntra")) return { store: "Myntra", priority: "PRIMARY", category: "Fashion" };
   if (hostname.includes("ajio")) return { store: "Ajio", priority: "PRIMARY", category: "Fashion" };
-  if (hostname.includes("nykaa")) return { store: "Nykaa Fashion", priority: "PRIMARY", category: "Fashion" };
   if (hostname.includes("amazon")) return { store: "Amazon India", priority: "SECONDARY", category: "Fashion" };
   if (hostname.includes("flipkart")) return { store: "Flipkart", priority: "SECONDARY", category: "Fashion" };
-  if (hostname.includes("meesho")) return { store: "Meesho", priority: "SECONDARY", category: "Fashion" };
   return null;
+}
+
+function isEarnKaroUrl(value) {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname.includes("earnkaro") || hostname.includes("ekaro") || hostname.includes("mysk.short.gy");
+  } catch {
+    return false;
+  }
+}
+
+function normalizeUrlForMemory(value) {
+  try {
+    const url = new URL(value);
+    url.search = "";
+    url.hash = "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return String(value || "").trim().replace(/[?#].*$/, "").replace(/\/$/, "");
+  }
+}
+
+async function resolveEarnKaroLink(earnKaroUrl) {
+  let current = earnKaroUrl;
+  const maxHops = Number(process.env.MAX_REDIRECT_HOPS || 10);
+
+  for (let hop = 0; hop <= maxHops; hop++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(current, {
+        redirect: "manual",
+        signal: controller.signal,
+        headers: {
+          "user-agent": "Mozilla/5.0 RedhotAffiliateAgent/3.0",
+          "accept": "text/html,application/xhtml+xml"
+        }
+      });
+      const location = response.headers.get("location");
+      if (response.status >= 300 && response.status < 400 && location) {
+        current = new URL(location, current).toString();
+        continue;
+      }
+      return current;
+    } catch {
+      const err = new Error("Could not resolve affiliate link. Please check the URL.");
+      err.status = 400;
+      err.stage = "Resolving link";
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  const err = new Error("Could not resolve affiliate link. Please check the URL.");
+  err.status = 400;
+  err.stage = "Resolving link";
+  throw err;
+}
+
+async function alreadyPublished(earnKaroUrl, finalUrl) {
+  const memory = await readJson(PUBLISHED_FILE, []);
+  const keys = new Set(memory.flatMap(item => [item.affiliate_url_key, item.original_url_key]).filter(Boolean));
+  return keys.has(normalizeUrlForMemory(earnKaroUrl)) || keys.has(normalizeUrlForMemory(finalUrl));
+}
+
+async function markPublished(product) {
+  const memory = await readJson(PUBLISHED_FILE, []);
+  memory.push({
+    id: product.id,
+    title: product.title || product.name,
+    affiliate_url: product.affiliate_url,
+    original_url: product.original_url,
+    affiliate_url_key: normalizeUrlForMemory(product.affiliate_url),
+    original_url_key: normalizeUrlForMemory(product.original_url),
+    published_at: new Date().toISOString()
+  });
+  await writeJson(PUBLISHED_FILE, memory);
 }
 
 function pickMeta(html, names) {
@@ -138,57 +234,125 @@ async function uploadImagesToCloudinary(imageUrls, folder = "redhot/products") {
   return secureUrls.length ? secureUrls : urls;
 }
 
-async function scrapeAffiliateUrl(affiliateUrl) {
-  const detected = detectStoreFromUrl(affiliateUrl);
+async function enrichWithGemini(product) {
+  if (!process.env.GEMINI_API_KEY) {
+    return {
+      seo_description: product.description || product.title || product.name,
+      seo_title: (product.title || product.name || "Redhot Fashion Deal").slice(0, 60),
+      meta_description: (product.description || product.title || product.name || "Redhot affiliate fashion deal.").slice(0, 160)
+    };
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = `Create SEO content for this Indian fashion affiliate product. Return strict JSON with keys seo_description, seo_title, meta_description.
+Product: ${product.title || product.name}
+Store: ${product.store}
+Category: ${product.category}
+Price: ${product.price}
+MRP: ${product.mrp}
+Description: ${product.description || ""}`;
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(text);
+    return {
+      seo_description: String(parsed.seo_description || product.description || product.title).slice(0, 1200),
+      seo_title: String(parsed.seo_title || product.title || product.name).slice(0, 60),
+      meta_description: String(parsed.meta_description || product.description || product.title || product.name).slice(0, 160)
+    };
+  } catch (err) {
+    console.warn("Gemini enrichment failed, using scraped description fallback:", err.message);
+    return {
+      seo_description: product.description || product.title || product.name,
+      seo_title: (product.title || product.name || "Redhot Fashion Deal").slice(0, 60),
+      meta_description: (product.description || product.title || product.name || "Redhot affiliate fashion deal.").slice(0, 160)
+    };
+  }
+}
+
+async function scrapeAffiliateUrl(earnKaroUrl, finalUrl) {
+  const detected = detectStoreFromUrl(finalUrl);
   if (!detected) {
-    const err = new Error("Unsupported affiliate link domain. Use Myntra, Ajio, Nykaa Fashion, Amazon, Flipkart, or Meesho.");
+    const err = new Error("Store not supported. Supported stores: Myntra, Amazon, Flipkart, Ajio.");
     err.status = 400;
+    err.stage = "Detecting store";
     throw err;
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 18000);
+  const timeout = setTimeout(() => controller.abort(), 20000);
   try {
-    const response = await fetch(affiliateUrl, {
+    const response = await fetch(finalUrl, {
       redirect: "follow",
       signal: controller.signal,
       headers: {
-        "user-agent": "Mozilla/5.0 RedhotAffiliateAgent/2.1",
+        "user-agent": "Mozilla/5.0 RedhotAffiliateAgent/3.0",
         "accept": "text/html,application/xhtml+xml"
       }
     });
     const html = await response.text();
     const title = pickMeta(html, ["og:title", "twitter:title"]) || decodeHtml(html.match(/<title[^>]*>([^<]+)/i)?.[1] || `${detected.store} Fashion Deal`);
     const description = pickMeta(html, ["og:description", "description", "twitter:description"]);
-    const image = pickMeta(html, ["og:image", "twitter:image"]);
-    const cloudinaryImages = await uploadImagesToCloudinary(image ? [image] : []);
+    const primaryImage = pickMeta(html, ["og:image", "twitter:image"]);
+    const extractedImages = [...new Set([
+      primaryImage,
+      ...[...html.matchAll(/https?:\/\/[^"'\\\s]+(?:jpg|jpeg|png|webp)(?:[^"'\\\s]*)?/gi)].map(match => decodeHtml(match[0]))
+    ].filter(Boolean))].slice(0, Number(process.env.MAX_IMAGES || 8));
+    if (!extractedImages.length) {
+      const err = new Error("No product images found.");
+      err.status = 422;
+      err.stage = "Scraping product";
+      throw err;
+    }
+    const cloudinaryImages = await uploadImagesToCloudinary(extractedImages);
+    if (!cloudinaryImages.length) {
+      const err = new Error("Image upload failed.");
+      err.status = 502;
+      err.stage = "Uploading images";
+      throw err;
+    }
     const price = extractNumber(pickMeta(html, ["product:price:amount", "og:price:amount"]) || html.match(/(?:price|sellingPrice)["']?\s*[:=]\s*["']?₹?\s*([\d,.]+)/i)?.[1]);
     const mrp = extractNumber(html.match(/(?:mrp|maximumRetailPrice|listPrice)["']?\s*[:=]\s*["']?₹?\s*([\d,.]+)/i)?.[1]);
     const discount = mrp > price && price > 0 ? Math.round(((mrp - price) / mrp) * 100) : 0;
+    if (!title || !price) {
+      const err = new Error("Could not extract product details. The page may have changed.");
+      err.status = 422;
+      err.stage = "Scraping product";
+      throw err;
+    }
 
-    return normalizeProduct({
+    const scrapedProduct = normalizeProduct({
       name: title.slice(0, 120),
       title,
       description,
       price,
       mrp,
       discount,
-      image: cloudinaryImages[0] || image,
-      images: cloudinaryImages.length ? cloudinaryImages : (image ? [image] : []),
-      affiliate_url: affiliateUrl,
-      source_url: response.url || affiliateUrl,
-      original_url: response.url || affiliateUrl,
+      image: cloudinaryImages[0],
+      images: cloudinaryImages,
+      cloudinary_images: cloudinaryImages,
+      affiliate_url: earnKaroUrl,
+      source_url: response.url || finalUrl,
+      original_url: response.url || finalUrl,
       store: detected.store,
       store_priority: detected.priority,
       category: detected.category,
       tags: [detected.store.toLowerCase().replace(/\s+/g, "-"), "affiliate", "fashion"],
-      trend_keyword: "manual affiliate link",
+      trend_keyword: "earnkaro manual link",
       seo_title: title.slice(0, 60),
       meta_description: (description || title).slice(0, 160),
       broadcast_status: {
-        telegram: "queued",
         pinterest: "rss"
       }
+    });
+    const seo = await enrichWithGemini(scrapedProduct);
+    return normalizeProduct({
+      ...scrapedProduct,
+      description: seo.seo_description || scrapedProduct.description,
+      seo_description: seo.seo_description,
+      seo_title: seo.seo_title,
+      meta_description: seo.meta_description
     });
   } finally {
     clearTimeout(timeout);
@@ -203,6 +367,7 @@ function normalizeProduct(input, existing = {}) {
     mrp > price && price > 0 ? Math.round(((mrp - price) / mrp) * 100) : 0
   ));
   const images = toArray(input.images || input.image_urls || existing.images);
+  const cloudinaryImages = toArray(input.cloudinary_images || existing.cloudinary_images);
   const image = input.image || input.primary_image || images[0] || existing.image || "";
   const tags = toArray(input.tags || existing.tags);
   const store = input.store || input.store_name || existing.store || "Manual";
@@ -226,6 +391,7 @@ function normalizeProduct(input, existing = {}) {
     badge: input.badge || existing.badge || (discount >= 40 ? "HOT" : ""),
     image,
     images: images.length ? images : (image ? [image] : []),
+    cloudinary_images: cloudinaryImages.length ? cloudinaryImages : (images.length ? images : (image ? [image] : [])),
     description: input.description || input.ai_description || existing.description || "",
     affiliate_url: affiliateUrl,
     affiliate_link: affiliateUrl || input.affiliate_link || input.affiliate_url || existing.affiliate_link || "#",
@@ -293,19 +459,6 @@ app.post("/api/logout", (req, res) => {
 app.get("/products", async (req, res) => {
   const data = await readProducts();
   res.json(data);
-});
-
-app.get("/feed.xml", async (req, res) => {
-  const products = await readProducts();
-  const siteUrl = process.env.WEBSITE_URL || "https://redhot.in";
-  const items = products.slice(-30).reverse().map(product => {
-    const title = escapeXml(product.seo_title || product.name);
-    const link = escapeXml(product.affiliate_url || product.source_url || product.original_url || product.affiliate_link || siteUrl);
-    const description = escapeXml(product.meta_description || product.description || "Redhot affiliate fashion deal.");
-    return `<item><title>${title}</title><link>${link}</link><guid>${siteUrl}/product/${product.slug || product.id}</guid><description>${description}</description><pubDate>${new Date(product.published_at || Date.now()).toUTCString()}</pubDate></item>`;
-  }).join("");
-
-  res.type("application/rss+xml").send(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Redhot Deals</title><link>${siteUrl}</link><description>AI-curated fashion affiliate deals from Redhot.</description>${items}</channel></rss>`);
 });
 
 app.post("/products", requireAuth, async (req, res) => {
@@ -383,8 +536,7 @@ app.get("/api/integrations", requireAuth, async (req, res) => {
   res.json({
     website_api_key: Boolean(process.env.WEBSITE_API_KEY),
     cloudinary: cloudinaryConfigured,
-    gemini: Boolean(process.env.GEMINI_API_KEY),
-    telegram: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHANNEL_ID)
+    gemini: Boolean(process.env.GEMINI_API_KEY)
   });
 });
 
@@ -403,19 +555,23 @@ app.post("/api/products", requireAuth, async (req, res) => {
 app.post("/api/manual-affiliate", requireAuth, async (req, res) => {
   try {
     const affiliateUrl = String(req.body.affiliate_url || req.body.url || "").trim();
-    if (!affiliateUrl) {
-      return res.status(400).json({ error: "affiliate_url is required", stage: "Detecting store" });
+    if (!affiliateUrl || !/^https?:\/\//i.test(affiliateUrl)) {
+      return res.status(400).json({ error: "Please enter a valid EarnKaro link.", stage: "Resolving link" });
+    }
+    if (!isEarnKaroUrl(affiliateUrl)) {
+      return res.status(400).json({ error: "Please paste an EarnKaro link.", stage: "Resolving link" });
     }
 
-    const detected = detectStoreFromUrl(affiliateUrl);
+    const finalUrl = await resolveEarnKaroLink(affiliateUrl);
+    const detected = detectStoreFromUrl(finalUrl);
     if (!detected) {
-      return res.status(400).json({
-        error: "Unsupported affiliate link domain. Supported stores: Myntra, Ajio, Nykaa Fashion, Amazon India, Flipkart, Meesho.",
-        stage: "Detecting store"
-      });
+      return res.status(400).json({ error: "Store not supported. Supported stores: Myntra, Amazon, Flipkart, Ajio.", stage: "Detecting store" });
+    }
+    if (await alreadyPublished(affiliateUrl, finalUrl)) {
+      return res.status(409).json({ error: "Product already published.", stage: "Checking duplicate" });
     }
 
-    const product = await scrapeAffiliateUrl(affiliateUrl);
+    const product = await scrapeAffiliateUrl(affiliateUrl, finalUrl);
     const data = await readProducts();
     const newProduct = {
       ...product,
@@ -423,29 +579,31 @@ app.post("/api/manual-affiliate", requireAuth, async (req, res) => {
       manual_trigger: true,
       media_provider: cloudinaryConfigured ? "cloudinary" : "source",
       pipeline_stages: [
+        "Resolving link",
         "Detecting store",
         "Scraping product",
         "Uploading images",
         "Generating SEO",
         "Publishing",
-        "Broadcasting",
-        "Done"
+        "Published"
       ]
     };
     data.push(newProduct);
     await writeProducts(data);
+    await markPublished(newProduct);
 
     res.status(201).json({
       id: newProduct.id,
       post_id: newProduct.id,
       product: newProduct,
       stages: newProduct.pipeline_stages,
-      message: "Manual affiliate link published"
+      url: `${process.env.WEBSITE_URL || ""}/product/${newProduct.slug}`,
+      message: "Published"
     });
   } catch (err) {
     res.status(err.status || 500).json({
       error: err.message || "Manual affiliate publish failed",
-      stage: err.status === 400 ? "Detecting store" : "Scraping product"
+      stage: err.stage || "Scraping product"
     });
   }
 });
@@ -480,15 +638,6 @@ app.get("/api/dashboard", requireAuth, async (req, res) => {
     ]
   });
 });
-
-function escapeXml(value) {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
 
 // Global error handler for uncaught JSON/parsing errors
 app.use((err, req, res, _next) => {

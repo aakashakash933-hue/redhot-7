@@ -22,8 +22,8 @@ function useProducts() {
 }
 
 const CATEGORIES = ["Women Fashion", "Ethnic Wear", "Men Fashion", "Topwear", "Bottomwear", "Accessories", "Footwear", "Beauty Fashion"];
-const STORES = ["Myntra", "Ajio", "Nykaa Fashion", "Amazon India", "Flipkart", "Meesho", "Manual"];
-const PRIMARY_STORES = new Set(["Myntra", "Ajio", "Nykaa Fashion"]);
+const STORES = ["Myntra", "Amazon India", "Flipkart", "Ajio", "Manual"];
+const PRIMARY_STORES = new Set(["Myntra", "Ajio"]);
 const emptyForm = {
   name: "",
   price: "",
@@ -126,8 +126,7 @@ export default function RedHotAdmin({ onNavigateStore }) {
     highRated: products.filter(p => Number(p.rating) >= 4).length,
     affiliateReady: products.filter(p => p.affiliate_link && p.affiliate_link !== "#").length,
     directAffiliate: products.filter(p => p.affiliate_url).length,
-    estimatedCommission: products.reduce((sum, p) => sum + (Number(p.estimated_commission) || 0), 0),
-    priceWatch: products.filter(p => Number(p.lowest_price || p.price) <= Number(p.price)).length,
+    cloudinaryImages: products.filter(p => Array.isArray(p.cloudinary_images) && p.cloudinary_images.length > 0).length,
     trendKeywords: [...new Set(products.map(p => p.trend_keyword).filter(Boolean))].slice(0, 8),
     storeBreakdown: products.reduce((acc, product) => {
       const store = product.store || "Manual";
@@ -261,17 +260,17 @@ export default function RedHotAdmin({ onNavigateStore }) {
   const runManualPublish = async (e) => {
     e.preventDefault();
     if (!manualUrl.trim()) {
-      setManualError("Paste an affiliate link first.");
+      setManualError("Paste an EarnKaro link first.");
       return;
     }
 
     const stages = [
+      "Resolving link...",
       "Detecting store...",
       "Scraping product...",
       "Uploading images...",
       "Generating SEO...",
       "Publishing...",
-      "Broadcasting...",
     ];
     setManualLoading(true);
     setManualError("");
@@ -286,10 +285,10 @@ export default function RedHotAdmin({ onNavigateStore }) {
     try {
       await axios.post(`${API}/api/manual-affiliate`, { affiliate_url: manualUrl.trim() }, { headers: authHeader(token) });
       clearInterval(timer);
-      setManualStage("Done.");
+      setManualStage("Published!");
       setManualUrl("");
       refresh();
-      showToast("✓ Affiliate link published");
+      showToast("✓ EarnKaro product published");
     } catch (err) {
       clearInterval(timer);
       if (err.response?.status === 401) handleLogout();
@@ -379,11 +378,9 @@ export default function RedHotAdmin({ onNavigateStore }) {
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))", gap:16, marginBottom:40 }}>
           {[
             { label:"TOTAL PRODUCTS", value:stats.total },
-            { label:"PRIMARY STORE SHARE", value:`${stats.primaryShare}%` },
             { label:"HIGH RATED ITEMS", value:stats.highRated },
-            { label:"AFFILIATE READY", value:stats.affiliateReady },
-            { label:"DIRECT LINKS", value:stats.directAffiliate },
-            { label:"EST. COMMISSION", value:`₹${stats.estimatedCommission.toLocaleString()}` },
+            { label:"EARNKARO LINKS", value:stats.directAffiliate },
+            { label:"CLOUDINARY ITEMS", value:stats.cloudinaryImages },
             { label:"AVG PRICE", value:`₹${stats.avgPrice.toLocaleString()}` },
           ].map(s => (
             <div key={s.label} className="rha-card" style={{ padding:"24px 22px", position:"relative", overflow:"hidden" }}>
@@ -397,15 +394,14 @@ export default function RedHotAdmin({ onNavigateStore }) {
         {/* PIPELINE READINESS */}
         <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1.2fr) minmax(260px,.8fr)", gap:16, marginBottom:36 }}>
           <div className="rha-card" style={{ padding:24 }}>
-            <div style={{ fontSize:12, letterSpacing:"0.2em", color:"#c0392b", marginBottom:16, fontWeight:600 }}>AFFILIATEAGENT READINESS</div>
+            <div style={{ fontSize:12, letterSpacing:"0.2em", color:"#c0392b", marginBottom:16, fontWeight:600 }}>AFFILIATEAGENT V3 READINESS</div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:12 }}>
               {[
-                { label:"Direct affiliate URL", value:"affiliate_url is the primary outbound link", ok:true },
+                { label:"EarnKaro link", value:"affiliate_url is the Shop Now link", ok:true },
                 { label:"Product publish API", value:"/api/products", ok:true },
-                { label:"Primary store target", value:"60% minimum", ok:stats.primaryShare >= 60 || products.length === 0 },
-                { label:"Rating signal", value:"4.0+ prioritized", ok:stats.highRated > 0 || products.length === 0 },
-                { label:"RSS syndication", value:"/feed.xml for optional Pinterest IFTTT", ok:true },
-                { label:"SEO fields", value:"title + meta", ok:true },
+                { label:"Supported stores", value:"Myntra, Amazon, Flipkart, Ajio", ok:true },
+                { label:"Cloudinary", value:"images upload to CDN", ok:true },
+                { label:"Gemini fallback", value:"SEO falls back to scraped copy", ok:true },
               ].map(item => (
                 <div key={item.label} style={{ border:"1px solid #1f1f1f", borderRadius:6, padding:14, background:"#0d0d0d" }}>
                   <div style={{ fontSize:10, letterSpacing:"0.16em", color:item.ok ? "#62b376" : "#c8a01e", marginBottom:6 }}>{item.ok ? "READY" : "CHECK"}</div>
@@ -436,13 +432,13 @@ export default function RedHotAdmin({ onNavigateStore }) {
         {/* MANUAL AFFILIATE TRIGGER */}
         <div className="rha-card" style={{ padding:28, marginBottom:36, position:"relative", overflow:"hidden" }}>
           <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:"linear-gradient(90deg,#62b376,#c0392b,transparent)" }} />
-          <div style={{ fontSize:12, letterSpacing:"0.2em", color:"#62b376", marginBottom:10, fontWeight:600 }}>MANUAL AFFILIATE LINK PUBLISH</div>
+          <div style={{ fontSize:12, letterSpacing:"0.2em", color:"#62b376", marginBottom:10, fontWeight:600 }}>EARNKARO LINK PUBLISH</div>
           <div style={{ fontSize:12, color:"#777", marginBottom:18 }}>
-            Paste one affiliate link. The system detects the store, scrapes product data, keeps the pasted URL as affiliate_url, publishes it, and marks social broadcast stages.
+            Paste one EarnKaro link. The system resolves the final store URL, scrapes product data, uploads images to Cloudinary, generates SEO, and publishes it.
           </div>
           <form onSubmit={runManualPublish}>
             <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) auto", gap:12, alignItems:"start" }}>
-              <input className="rha-inp" placeholder="https://affiliate-or-store-link..." value={manualUrl} onChange={e => setManualUrl(e.target.value)} disabled={manualLoading} />
+              <input className="rha-inp" placeholder="https://mysk.short.gy/... or https://ekaro.in/..." value={manualUrl} onChange={e => setManualUrl(e.target.value)} disabled={manualLoading} />
               <button className="rha-btn-p" type="submit" disabled={manualLoading}>{manualLoading ? "RUNNING" : "PUBLISH"}</button>
             </div>
           </form>

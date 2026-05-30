@@ -5,8 +5,13 @@
     "price": 587,
     "category": "Men",
     "badge": "NEW",
+    "store": "Myntra",
+    "store_priority": "PRIMARY",
+    "tags": ["myntra", "affiliate", "fashion"],
     "image": "https://assets.myntassets.com/assets/images/2026/FEBRUARY/14/UyA77P87_2425ad307f294f6bb3687b0c8320928e.jpg",
-    "affiliate_link": "https://myntr.it/FMg9jE7"
+    "affiliate_link": "https://myntr.it/FMg9jE7",
+    "affiliate_url": "https://myntr.it/FMg9jE7",
+    "published_at": "2026-05-01T00:00:00.000Z"
   },
   {
     "id": 1777728483736,
@@ -14,7 +19,12 @@
     "price": 500,
     "category": "Men",
     "badge": "NEW",
+    "store": "Myntra",
+    "store_priority": "PRIMARY",
+    "tags": ["myntra", "affiliate", "fashion"],
     "image": "https://assets.myntassets.com/f_webp,dpr_1.5,q_60,w_210,c_limit,fl_progressive/assets/images/2026/APRIL/16/S9or9sep_939faaf14d8f4d98b122b3ae056a2d58.jpg",
-    "affiliate_link": "https://share.google/dzoHE1I81FGLcrZxY"
+    "affiliate_link": "https://share.google/dzoHE1I81FGLcrZxY",
+    "affiliate_url": "https://share.google/dzoHE1I81FGLcrZxY",
+    "published_at": "2026-05-01T00:00:00.000Z"
   }
 ]
